@@ -322,7 +322,7 @@ dependencies = [
 
 [[package]]
 name = "mkmidilibrary"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "alsa",
  "bitflags 2.10.0",

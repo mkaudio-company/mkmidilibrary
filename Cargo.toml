@@ -1,9 +1,10 @@
 [package]
 name = "mkmidilibrary"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Music scoring and MIDI library for Rust"
 license = "MIT"
+documentation = "https://docs.rs/mkmidilibrary"
 repository = "https://github.com/MinjaeKim/mkmidilibrary"
 keywords = ["music", "midi", "score", "notation", "audio"]
 categories = ["multimedia::audio", "parser-implementations"]
