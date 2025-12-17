@@ -29,7 +29,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-mkmidilibrary = "0.1"
+mkmidilibrary = "0.1.2"
 ```
 
 ### Feature Flags
@@ -41,7 +41,7 @@ To disable optional features:
 
 ```toml
 [dependencies]
-mkmidilibrary = { version = "0.1", default-features = false }
+mkmidilibrary = { version = "0.1.2", default-features = false }
 ```
 
 ## Quick Start
