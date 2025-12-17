@@ -1,3 +1,7 @@
+[![](https://img.shields.io/crates/v/mkmidilibrary.svg)](https://crates.io/crates/mkmidilibrary)
+[![](https://img.shields.io/crates/l/mkmidilibrary.svg)](https://crates.io/crates/mkmidilibrary)
+[![](https://docs.rs/mkmidilibrary/badge.svg)](https://docs.rs/mkmidilibrary/)
+
 # mkmidilibrary
 
 A comprehensive Rust library for music notation, MIDI file I/O, and real-time MIDI communication.
