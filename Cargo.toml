@@ -5,7 +5,7 @@ edition = "2021"
 description = "Music scoring and MIDI library for Rust"
 license = "MIT"
 documentation = "https://docs.rs/mkmidilibrary"
-repository = "https://github.com/MinjaeKim/mkmidilibrary"
+repository = "https://github.com/mkaudio-company/mkmidilibrary"
 keywords = ["music", "midi", "score", "notation", "audio"]
 categories = ["multimedia::audio", "parser-implementations"]
 
