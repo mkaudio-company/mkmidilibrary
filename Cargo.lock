@@ -297,9 +297,9 @@ dependencies = [
 
 [[package]]
 name = "mkgraphic"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "292450557555375326f486aebe91f2e673db702003aa6b7fbf3f2a0bffb83bfa"
+checksum = "b1809c12f8c7e6b0ce4ed9e83a4783679f4a18a332eef06bd78389d2f1c25fa8"
 dependencies = [
  "bitflags 2.10.0",
  "block2",
