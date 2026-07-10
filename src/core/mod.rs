@@ -10,22 +10,27 @@
 
 mod accidental;
 mod chord;
+mod chord_tables;
 mod duration;
 mod interval;
 mod note;
 mod pitch;
 mod rest;
 
-pub use accidental::{Accidental, Microtone};
+pub use accidental::{Accidental, AccidentalDisplay, AccidentalDisplayType, Microtone};
 pub use chord::{Chord, ChordQuality};
-pub use duration::{Duration, DurationType, Tuplet};
-pub use interval::{Interval, IntervalQuality};
-pub use note::{
-    Articulation, ArticulationType, Expression, ExpressionType, Lyric, Note, NoteHead, NoteHeadType,
-    StemDirection, Tie, TieType, Volume,
+pub use duration::{Duration, DurationTuple, DurationType, GraceDuration, Tuplet, TupletFixer};
+pub use interval::{
+    add, convert_diatonic_number_to_step, get_absolute_higher_note, get_absolute_lower_note,
+    get_written_higher_note, get_written_lower_note, notes_to_interval, subtract, Interval,
+    IntervalQuality,
 };
-pub use pitch::{Pitch, Step};
-pub use rest::Rest;
+pub use note::{
+    is_composite_lyric_set, Articulation, ArticulationMark, Expression, ExpressionType, Lyric,
+    Note, NoteHead, NoteHeadType, StemDirection, Tie, TieType, Unpitched, Volume,
+};
+pub use pitch::{update_accidental_display, Pitch, Step};
+pub use rest::{FullMeasureRest, Rest};
 
 use num::rational::Ratio;
 use thiserror::Error;
@@ -53,4 +58,7 @@ pub enum ParseError {
 
     #[error("invalid interval: {0}")]
     InvalidInterval(String),
+
+    #[error("invalid time signature: {0}")]
+    InvalidTimeSignature(String),
 }

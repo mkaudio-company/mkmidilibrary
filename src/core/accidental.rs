@@ -130,6 +130,22 @@ impl Accidental {
                 | Accidental::TripleSharp
         )
     }
+
+    /// List the canonical string names of all accidental variants (the
+    /// preferred names accepted by `from_str`).
+    pub fn list_names() -> Vec<&'static str> {
+        vec![
+            "triple-flat",
+            "double-flat",
+            "flat",
+            "natural",
+            "sharp",
+            "double-sharp",
+            "triple-sharp",
+            "quarter-flat",
+            "quarter-sharp",
+        ]
+    }
 }
 
 impl Default for Accidental {
@@ -141,6 +157,74 @@ impl Default for Accidental {
 impl fmt::Display for Accidental {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.ascii())
+    }
+}
+
+/// How an accidental's display status was/should be determined. `Accidental`
+/// itself is a plain `Copy` value type used throughout the crate, so this
+/// display-state machine lives in a separate wrapper (`AccidentalDisplay`)
+/// rather than adding fields to `Accidental` directly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AccidentalDisplayType {
+    #[default]
+    Normal,
+    /// Always display, regardless of key signature/measure context.
+    Always,
+    /// Never display.
+    Never,
+    /// Display only if it would otherwise be ambiguous (e.g. it differs
+    /// from the key signature or a previous accidental in the same
+    /// measure on the same line/space).
+    IfNeeded,
+}
+
+/// Pairs an `Accidental` with whether it should actually be printed in
+/// notation, and why. Mirrors music21's accidental-display-state fields
+/// (`displayStatus`, `displayType`) that `Accidental` alone doesn't carry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AccidentalDisplay {
+    /// The accidental itself.
+    pub accidental: Accidental,
+    /// Whether this accidental should actually be displayed. `None` means
+    /// undetermined (not yet computed by a display-status algorithm, e.g.
+    /// `Pitch::update_accidental_display`).
+    pub display_status: Option<bool>,
+    /// How the display status was (or should be) determined.
+    pub display_type: AccidentalDisplayType,
+}
+
+impl AccidentalDisplay {
+    /// Create a new display wrapper with undetermined display status.
+    pub fn new(accidental: Accidental) -> Self {
+        Self {
+            accidental,
+            display_status: None,
+            display_type: AccidentalDisplayType::Normal,
+        }
+    }
+
+    /// Set the accidental and/or display type independently — i.e. without
+    /// resetting the other one or the display status. Mirrors music21's
+    /// `Accidental.setAttributeIndependently`.
+    pub fn set_attribute_independently(
+        &mut self,
+        accidental: Option<Accidental>,
+        display_type: Option<AccidentalDisplayType>,
+    ) {
+        if let Some(a) = accidental {
+            self.accidental = a;
+        }
+        if let Some(t) = display_type {
+            self.display_type = t;
+        }
+    }
+
+    /// Inherit the display status from another accidental's display
+    /// decision (e.g. a tied-over note should not re-display its
+    /// accidental, inheriting the "don't display" decision from the note
+    /// it's tied from).
+    pub fn inherit_display(&mut self, other: &AccidentalDisplay) {
+        self.display_status = other.display_status;
     }
 }
 
@@ -212,5 +296,29 @@ mod tests {
         let m = Microtone::new(50.0);
         assert_eq!(m.cents(), 50.0);
         assert_eq!(m.alter(), 0.5);
+    }
+
+    #[test]
+    fn test_accidental_list_names() {
+        let names = Accidental::list_names();
+        assert!(names.contains(&"sharp"));
+        assert!(names.contains(&"flat"));
+        assert_eq!(names.len(), 9);
+    }
+
+    #[test]
+    fn test_accidental_display() {
+        let mut display = AccidentalDisplay::new(Accidental::Sharp);
+        assert_eq!(display.display_status, None);
+        assert_eq!(display.display_type, AccidentalDisplayType::Normal);
+
+        display.set_attribute_independently(None, Some(AccidentalDisplayType::Always));
+        assert_eq!(display.accidental, Accidental::Sharp); // unchanged
+        assert_eq!(display.display_type, AccidentalDisplayType::Always);
+
+        let mut other = AccidentalDisplay::new(Accidental::Flat);
+        other.display_status = Some(false);
+        display.inherit_display(&other);
+        assert_eq!(display.display_status, Some(false));
     }
 }

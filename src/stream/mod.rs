@@ -16,6 +16,6 @@ mod voice;
 
 pub use base::{MusicElement, Stream, StreamElement};
 pub use measure::Measure;
-pub use part::Part;
+pub use part::{parts_to_voices, voices_to_parts, Part, RecursedElement};
 pub use score::{Metadata, Score};
 pub use voice::Voice;

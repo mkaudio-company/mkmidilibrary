@@ -56,7 +56,7 @@ pub mod prelude {
     };
     pub use crate::midi::{MidiEvent, MidiFile, MidiMessage, MidiTrack};
     pub use crate::notation::{Clef, Dynamics, KeySignature, Tempo, TimeSignature};
-    pub use crate::stream::{Measure, Part, Score, Stream, Voice};
+    pub use crate::stream::{Measure, MusicElement, Part, Score, Stream, Voice};
 
     #[cfg(feature = "realtime")]
     pub use crate::realtime::{MidiInput, MidiOutput, MidiPort};

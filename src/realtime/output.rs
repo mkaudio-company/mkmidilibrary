@@ -1,7 +1,7 @@
 //! Real-time MIDI output
 
 use super::port::{Api, MidiPort};
-use super::RtMidiError;
+use super::{RtMidiError, RtMidiErrorCallback};
 
 #[cfg(target_os = "macos")]
 use super::coremidi_impl::CoreMidiOutput;
@@ -16,6 +16,11 @@ pub struct MidiOutput {
     port_open: bool,
     /// Port name (when open)
     port_name: Option<String>,
+    /// Non-fatal warning callback (see `RtMidiError::Warning`/`DebugWarning`).
+    /// Reserved for platform backends that can report asynchronous,
+    /// non-fatal conditions (e.g. a device disconnect); `send_message`'s own
+    /// failures are reported through its `Result` instead.
+    error_callback: Option<RtMidiErrorCallback>,
     /// Platform-specific data
     #[cfg(target_os = "macos")]
     platform: Option<PlatformOutput>,
@@ -49,6 +54,7 @@ impl MidiOutput {
             api,
             port_open: false,
             port_name: None,
+            error_callback: None,
             platform: None,
         })
     }
@@ -61,6 +67,69 @@ impl MidiOutput {
     /// Get the client name
     pub fn client_name(&self) -> &str {
         &self.client_name
+    }
+
+    /// Rename the MIDI client. Renames the live backend immediately if one
+    /// exists (i.e. a port is currently open); otherwise takes effect the
+    /// next time a port is opened.
+    pub fn set_client_name(&mut self, name: &str) -> Result<(), RtMidiError> {
+        self.client_name = name.to_string();
+        self.platform_set_client_name(name)
+    }
+
+    /// Rename the currently open port.
+    pub fn set_port_name(&mut self, name: &str) -> Result<(), RtMidiError> {
+        if !self.port_open {
+            return Err(RtMidiError::PortNotOpen);
+        }
+        self.port_name = Some(name.to_string());
+        self.platform_set_port_name(name)
+    }
+
+    /// Register a callback for non-fatal warnings (see
+    /// `RtMidiError::Warning`/`DebugWarning`). Reserved for platform
+    /// backends that can report asynchronous conditions; today's backends
+    /// don't emit any, so this is a forward-compatible no-op sink.
+    pub fn set_error_callback<F>(&mut self, callback: F)
+    where
+        F: FnMut(&RtMidiError) + Send + 'static,
+    {
+        self.error_callback = Some(Box::new(callback));
+    }
+
+    /// Remove any registered error callback.
+    pub fn cancel_error_callback(&mut self) {
+        self.error_callback = None;
+    }
+
+    #[cfg(target_os = "macos")]
+    fn platform_set_client_name(&mut self, name: &str) -> Result<(), RtMidiError> {
+        match self.platform {
+            Some(ref mut p) => p.set_client_name(name),
+            None => Ok(()),
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    fn platform_set_port_name(&mut self, name: &str) -> Result<(), RtMidiError> {
+        match self.platform {
+            Some(ref mut p) => p.set_port_name(name),
+            None => Err(RtMidiError::PortNotOpen),
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    fn platform_set_client_name(&mut self, _name: &str) -> Result<(), RtMidiError> {
+        Err(RtMidiError::DriverError(
+            "set_client_name is not implemented for this platform".to_string(),
+        ))
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    fn platform_set_port_name(&mut self, _name: &str) -> Result<(), RtMidiError> {
+        Err(RtMidiError::DriverError(
+            "set_port_name is not implemented for this platform".to_string(),
+        ))
     }
 
     /// Get available output ports
@@ -338,12 +407,13 @@ impl MidiOutput {
 
 impl Drop for MidiOutput {
     fn drop(&mut self) {
-        // Send all notes off before closing
-        if self.port_open {
-            for channel in 0..16 {
-                let _ = self.send_all_notes_off(channel);
-            }
-        }
+        // Matches upstream RtMidi's ~RtMidiOut() destructor, which only
+        // closes the port and does not inject any MIDI data. Silently
+        // sending "all notes off" here would be a surprising side effect
+        // for anyone porting C++ RtMidi code, and could affect other
+        // software/hardware listening on a shared port. Callers who want
+        // that behavior can call `send_all_notes_off` explicitly before
+        // dropping.
         self.close_port();
     }
 }

@@ -6,6 +6,28 @@ use std::fmt;
 
 use super::{Duration, Fraction};
 
+/// Whether a rest fills its entire enclosing measure. Unlike a plain
+/// bool, this mirrors music21's 4-state `Rest.fullMeasure`: `Auto` (the
+/// default) determines this from context — comparing the rest's own
+/// duration against its enclosing measure's duration (see
+/// `Rest::is_full_measure_in_context`) — rather than being explicitly set.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum FullMeasureRest {
+    /// Explicitly not a full-measure rest, regardless of duration.
+    False,
+    /// Explicitly a full-measure rest, regardless of duration.
+    True,
+    /// Auto-detect from context: a full-measure rest if its own duration
+    /// equals its enclosing measure's duration.
+    #[default]
+    Auto,
+    /// Always display as a single full-measure (whole) rest symbol
+    /// regardless of the rest's own notated duration (e.g. a
+    /// whole-measure rest in 5/8 time is still drawn as one whole-rest
+    /// symbol rather than a tied group).
+    Always,
+}
+
 /// A musical rest (silence with duration)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rest {
@@ -15,8 +37,12 @@ pub struct Rest {
     offset: Fraction,
     /// Whether this rest should be hidden in notation
     hidden: bool,
-    /// Full measure rest
-    full_measure: bool,
+    /// Full measure rest mode (see `FullMeasureRest`)
+    full_measure: FullMeasureRest,
+    /// Vertical display offset (in staff steps/lines) from the rest's
+    /// default vertical position — used e.g. to avoid collisions between
+    /// rests in different voices sharing a staff.
+    step_shift: i8,
 }
 
 impl Rest {
@@ -26,7 +52,8 @@ impl Rest {
             duration,
             offset: Fraction::new(0, 1),
             hidden: false,
-            full_measure: false,
+            full_measure: FullMeasureRest::Auto,
+            step_shift: 0,
         }
     }
 
@@ -55,10 +82,10 @@ impl Rest {
         Self::new(Duration::sixteenth())
     }
 
-    /// Create a full-measure rest
+    /// Create an explicitly full-measure rest.
     pub fn full_measure(duration: Duration) -> Self {
         let mut rest = Self::new(duration);
-        rest.full_measure = true;
+        rest.full_measure = FullMeasureRest::True;
         rest
     }
 
@@ -102,14 +129,56 @@ impl Rest {
         self.hidden = hidden;
     }
 
-    /// Check if this is a full-measure rest
+    /// Check if this is an explicitly full-measure rest (`True` or
+    /// `Always`), without any measure-duration context. An `Auto` rest
+    /// (the default) reports `false` here regardless of its own duration —
+    /// use `is_full_measure_in_context` when a measure duration is
+    /// available to correctly resolve `Auto`.
     pub fn is_full_measure(&self) -> bool {
+        matches!(self.full_measure, FullMeasureRest::True | FullMeasureRest::Always)
+    }
+
+    /// Set whether this is an explicitly full-measure rest (`True`/`False`).
+    /// For the full 4-state control (including `Auto`/`Always`), use
+    /// `set_full_measure_mode`.
+    pub fn set_full_measure(&mut self, full_measure: bool) {
+        self.full_measure = if full_measure {
+            FullMeasureRest::True
+        } else {
+            FullMeasureRest::False
+        };
+    }
+
+    /// Get the 4-state full-measure mode.
+    pub fn full_measure_mode(&self) -> FullMeasureRest {
         self.full_measure
     }
 
-    /// Set whether this is a full-measure rest
-    pub fn set_full_measure(&mut self, full_measure: bool) {
-        self.full_measure = full_measure;
+    /// Set the 4-state full-measure mode.
+    pub fn set_full_measure_mode(&mut self, mode: FullMeasureRest) {
+        self.full_measure = mode;
+    }
+
+    /// Resolve whether this rest should be notated as filling a measure of
+    /// the given duration: `True`/`False` are explicit regardless of
+    /// `measure_duration`; `Always` is always true; `Auto` (the default)
+    /// compares this rest's own duration to `measure_duration`.
+    pub fn is_full_measure_in_context(&self, measure_duration: Fraction) -> bool {
+        match self.full_measure {
+            FullMeasureRest::True | FullMeasureRest::Always => true,
+            FullMeasureRest::False => false,
+            FullMeasureRest::Auto => self.quarter_length() == measure_duration,
+        }
+    }
+
+    /// Get the vertical display offset (in staff steps).
+    pub fn step_shift(&self) -> i8 {
+        self.step_shift
+    }
+
+    /// Set the vertical display offset (in staff steps).
+    pub fn set_step_shift(&mut self, shift: i8) {
+        self.step_shift = shift;
     }
 
     /// Scale the duration
@@ -153,6 +222,43 @@ mod tests {
         let rest = Rest::full_measure(Duration::whole());
         assert!(rest.is_full_measure());
         assert_eq!(rest.quarter_length(), Fraction::new(4, 1));
+    }
+
+    #[test]
+    fn test_rest_step_shift() {
+        let mut rest = Rest::quarter();
+        assert_eq!(rest.step_shift(), 0);
+        rest.set_step_shift(2);
+        assert_eq!(rest.step_shift(), 2);
+    }
+
+    #[test]
+    fn test_rest_full_measure_default_is_auto() {
+        let rest = Rest::whole();
+        assert_eq!(rest.full_measure_mode(), FullMeasureRest::Auto);
+        // Without context, an Auto rest reports false...
+        assert!(!rest.is_full_measure());
+        // ...but with a matching measure duration, Auto resolves to true.
+        assert!(rest.is_full_measure_in_context(Fraction::new(4, 1)));
+        // And to false against a non-matching measure duration (e.g. 3/4 time).
+        assert!(!rest.is_full_measure_in_context(Fraction::new(3, 1)));
+    }
+
+    #[test]
+    fn test_rest_full_measure_explicit_states() {
+        let mut rest = Rest::quarter();
+
+        rest.set_full_measure_mode(FullMeasureRest::True);
+        assert!(rest.is_full_measure());
+        assert!(rest.is_full_measure_in_context(Fraction::new(3, 1))); // explicit, ignores context
+
+        rest.set_full_measure_mode(FullMeasureRest::False);
+        assert!(!rest.is_full_measure());
+        assert!(!rest.is_full_measure_in_context(Fraction::new(1, 1))); // explicit false even if duration matches
+
+        rest.set_full_measure_mode(FullMeasureRest::Always);
+        assert!(rest.is_full_measure());
+        assert!(rest.is_full_measure_in_context(Fraction::new(100, 1))); // always true regardless
     }
 
     #[test]

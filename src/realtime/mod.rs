@@ -27,6 +27,12 @@ pub use port::{Api, MidiPort};
 
 use thiserror::Error;
 
+/// Get the version of this crate's realtime MIDI implementation (mirrors
+/// upstream RtMidi's `RtMidi::getVersion()`).
+pub fn get_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+}
+
 /// Errors that can occur during real-time MIDI operations
 #[derive(Debug, Error)]
 pub enum RtMidiError {
@@ -56,10 +62,29 @@ pub enum RtMidiError {
 
     #[error("thread error: {0}")]
     ThreadError(String),
+
+    /// A non-fatal condition (e.g. a dropped message because the polling
+    /// queue is full, or an unplugged device). Unlike the other variants,
+    /// this is never returned from a `Result` — it is only ever delivered
+    /// via `set_error_callback`, matching upstream RtMidi's
+    /// `RtMidiError::WARNING`.
+    #[error("warning: {0}")]
+    Warning(String),
+
+    /// A non-fatal, low-level diagnostic condition, delivered only via
+    /// `set_error_callback`. Matches upstream RtMidi's
+    /// `RtMidiError::DEBUG_WARNING`.
+    #[error("debug warning: {0}")]
+    DebugWarning(String),
 }
 
 /// MIDI callback function type
 pub type MidiCallback = Box<dyn FnMut(f64, &[u8]) + Send>;
+
+/// Error/warning callback function type, used to report non-fatal
+/// conditions (see `RtMidiError::Warning`/`DebugWarning`) that don't fit a
+/// `Result` return value.
+pub type RtMidiErrorCallback = Box<dyn FnMut(&RtMidiError) + Send>;
 
 /// Configuration for MIDI input
 #[derive(Debug, Clone)]
@@ -80,7 +105,20 @@ impl Default for MidiInputConfig {
             queue_size: 100,
             ignore_timing: true,
             ignore_active_sensing: true,
-            ignore_sysex: false,
+            // Matches upstream RtMidi's default (`RtMidiInData`'s
+            // `ignoreFlags(7)`, which ignores sysex/timing/active-sensing
+            // all by default) — sysex is ignored unless explicitly enabled.
+            ignore_sysex: true,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_version_matches_cargo_pkg_version() {
+        assert_eq!(get_version(), env!("CARGO_PKG_VERSION"));
     }
 }

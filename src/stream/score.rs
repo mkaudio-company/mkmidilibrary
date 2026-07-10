@@ -4,9 +4,12 @@
 
 use std::fmt;
 
+use crate::core::{Chord, Duration, Fraction, Interval, Pitch, Rest};
 use crate::notation::{KeySignature, Tempo, TimeSignature};
 
-use super::part::Part;
+use super::base::MusicElement;
+use super::measure::Measure;
+use super::part::{Instrument, Part};
 
 /// Score metadata
 #[derive(Debug, Clone, Default)]
@@ -224,6 +227,32 @@ impl Score {
         self.parts.iter().flat_map(|p| p.chords())
     }
 
+    /// A copy of this score with every part transposed by `interval`
+    /// (see `Part::transpose`).
+    pub fn transpose(&self, interval: &Interval) -> Score {
+        let mut result = self.clone();
+        for part in &mut result.parts {
+            *part = part.transpose(interval);
+        }
+        result
+    }
+
+    /// A copy of this score with every part's content augmented/
+    /// diminished by `scalar` (see `Part::augment_or_diminish`).
+    pub fn augment_or_diminish(&self, scalar: Fraction) -> Score {
+        let mut result = self.clone();
+        for part in &mut result.parts {
+            *part = part.augment_or_diminish(scalar);
+        }
+        result
+    }
+
+    /// Every part's instrument, in part order (only parts that actually
+    /// have one set). Mirrors music21's `Stream.getInstruments`.
+    pub fn get_instruments(&self) -> Vec<&Instrument> {
+        self.parts.iter().filter_map(|p| p.instrument()).collect()
+    }
+
     /// Ensure all parts have the same number of measures
     pub fn pad_measures(&mut self) {
         let max_measures = self.num_measures();
@@ -238,6 +267,110 @@ impl Score {
         self.parts.push(part);
         self.parts.len() - 1
     }
+
+    /// Reduce this score's parts into a single chordal-reduction `Part`:
+    /// at every point where any part's content starts or ends, the
+    /// pitches sounding across *all* parts at that instant (from `Note`s
+    /// and `Chord`s; `Rest`s contribute nothing) are combined into one
+    /// `Chord` covering that interval (or a `Rest`, if nothing is
+    /// sounding). Mirrors a scoped subset of music21's `Stream.chordify`:
+    /// the result is a single measure spanning the whole piece (this
+    /// doesn't yet re-split the result at the original measure/barline
+    /// boundaries), and it takes its time signature from the first part's
+    /// first measure, if any.
+    pub fn chordify(&self) -> Part {
+        let combined: Vec<(Fraction, MusicElement)> =
+            self.parts.iter().flat_map(|p| p.flatten()).collect();
+        let time_signature = self
+            .parts
+            .first()
+            .and_then(|p| p.measures().first())
+            .and_then(|m| m.time_signature())
+            .copied();
+
+        let mut result = Part::with_name("Chordified");
+        result.add_measure(chordal_reduction_measure(&combined, 1, time_signature));
+        result
+    }
+
+    /// Combine a set of parts' simultaneous content into a single `Part`,
+    /// like `chordify`, but preserving measure-by-measure structure
+    /// instead of collapsing the whole piece into one giant measure:
+    /// output measure `i` is built only from input measure `i` of each
+    /// given part (so all parts must share the same number of measures —
+    /// pad with `Part::ensure_measures` first if they don't), using
+    /// within-measure (not absolute) offsets for the boundary-slicing.
+    /// Mirrors a scoped subset of music21's `Score.implode`.
+    pub fn implode(parts: &[&Part]) -> Part {
+        let num_measures = parts.iter().map(|p| p.num_measures()).min().unwrap_or(0);
+        let mut result = Part::with_name("Imploded");
+
+        for mi in 0..num_measures {
+            let combined: Vec<(Fraction, MusicElement)> = parts
+                .iter()
+                .filter_map(|p| p.measure(mi))
+                .flat_map(|m| m.elements().iter().cloned())
+                .collect();
+            let time_signature = parts
+                .first()
+                .and_then(|p| p.measure(mi))
+                .and_then(|m| m.time_signature())
+                .copied();
+
+            result.add_measure(chordal_reduction_measure(&combined, mi as u32 + 1, time_signature));
+        }
+
+        result
+    }
+}
+
+/// Shared slicing logic for `chordify`/`implode`: slice `combined`
+/// (offset-tagged elements, all drawn from the same "local" offset
+/// space) at every point where any element starts or ends, and build a
+/// single `Measure` numbered `measure_number` where each slice becomes a
+/// `Chord` of every pitch sounding across `combined` during that slice
+/// (or a `Rest`, if nothing is sounding).
+fn chordal_reduction_measure(
+    combined: &[(Fraction, MusicElement)],
+    measure_number: u32,
+    time_signature: Option<TimeSignature>,
+) -> Measure {
+    let mut boundaries: Vec<Fraction> = Vec::new();
+    for (offset, element) in combined {
+        boundaries.push(*offset);
+        boundaries.push(*offset + element.quarter_length());
+    }
+    boundaries.sort();
+    boundaries.dedup();
+
+    let mut measure = Measure::new(measure_number);
+    if let Some(ts) = time_signature {
+        measure.set_time_signature(ts);
+    }
+
+    for window in boundaries.windows(2) {
+        let (start, end) = (window[0], window[1]);
+        let mut pitches: Vec<Pitch> = Vec::new();
+        for (offset, element) in combined {
+            let elem_end = *offset + element.quarter_length();
+            if *offset <= start && elem_end >= end {
+                match element {
+                    MusicElement::Note(n) => pitches.push(n.pitch().clone()),
+                    MusicElement::Chord(c) => pitches.extend(c.pitches().into_iter().cloned()),
+                    MusicElement::Rest(_) => {}
+                }
+            }
+        }
+
+        let duration = Duration::from_quarter_length(end - start);
+        if pitches.is_empty() {
+            measure.insert(start, MusicElement::Rest(Rest::new(duration)));
+        } else {
+            measure.insert(start, MusicElement::Chord(Chord::from_pitches(pitches, duration)));
+        }
+    }
+
+    measure
 }
 
 impl fmt::Display for Score {
@@ -293,6 +426,163 @@ mod tests {
 
         assert_eq!(idx, 0);
         assert_eq!(score.part(0).unwrap().name(), Some("Flute"));
+    }
+
+    #[test]
+    fn test_chordify_combines_simultaneous_notes_across_parts() {
+        use crate::core::{Note, Pitch, Step};
+        use crate::stream::MusicElement;
+
+        // Part 1: C4 quarter, then E4 quarter.
+        let mut part1 = Part::with_name("Soprano");
+        let mut m1a = Measure::new(1);
+        m1a.set_time_signature(TimeSignature::new(4, 4));
+        m1a.insert(
+            Fraction::new(0, 1),
+            MusicElement::Note(Note::quarter(Pitch::from_parts(Step::C, Some(4), None))),
+        );
+        m1a.insert(
+            Fraction::new(1, 1),
+            MusicElement::Note(Note::quarter(Pitch::from_parts(Step::E, Some(4), None))),
+        );
+        part1.add_measure(m1a);
+
+        // Part 2: a half note G3 spanning both.
+        let mut part2 = Part::with_name("Bass");
+        let mut m1b = Measure::new(1);
+        m1b.insert(
+            Fraction::new(0, 1),
+            MusicElement::Note(Note::half(Pitch::from_parts(Step::G, Some(3), None))),
+        );
+        part2.add_measure(m1b);
+
+        let mut score = Score::new();
+        score.add_part(part1);
+        score.add_part(part2);
+
+        let chordified = score.chordify();
+        let measure = chordified.measure(0).unwrap();
+        let elements = measure.elements();
+
+        // Two slices: [0,1) has C4+G3, [1,2) has E4+G3.
+        assert_eq!(elements.len(), 2);
+
+        let (offset0, elem0) = &elements[0];
+        assert_eq!(*offset0, Fraction::new(0, 1));
+        let chord0 = elem0.as_chord().unwrap();
+        let names0: Vec<String> = chord0.pitches().iter().map(|p| p.name()).collect();
+        assert!(names0.contains(&"C".to_string()));
+        assert!(names0.contains(&"G".to_string()));
+
+        let (offset1, elem1) = &elements[1];
+        assert_eq!(*offset1, Fraction::new(1, 1));
+        let chord1 = elem1.as_chord().unwrap();
+        let names1: Vec<String> = chord1.pitches().iter().map(|p| p.name()).collect();
+        assert!(names1.contains(&"E".to_string()));
+        assert!(names1.contains(&"G".to_string()));
+    }
+
+    #[test]
+    fn test_chordify_produces_rest_when_nothing_sounding() {
+        use crate::core::{Duration, Note, Pitch, Step};
+        use crate::stream::MusicElement;
+
+        let mut part = Part::with_name("Solo");
+        let mut m1 = Measure::new(1);
+        // A note, then a gap (nothing inserted from offset 1 to 2), then
+        // another note — chordify must fill the gap with a Rest rather
+        // than silently omitting it.
+        m1.insert(
+            Fraction::new(0, 1),
+            MusicElement::Note(Note::quarter(Pitch::from_parts(Step::C, Some(4), None))),
+        );
+        m1.insert(
+            Fraction::new(2, 1),
+            MusicElement::Note(Note::new(
+                Pitch::from_parts(Step::D, Some(4), None),
+                Duration::quarter(),
+            )),
+        );
+        part.add_measure(m1);
+
+        let mut score = Score::new();
+        score.add_part(part);
+
+        let chordified = score.chordify();
+        let measure = chordified.measure(0).unwrap();
+        let elements = measure.elements();
+
+        assert_eq!(elements.len(), 3);
+        assert!(elements[0].1.is_chord());
+        assert!(elements[1].1.is_rest());
+        assert_eq!(elements[1].0, Fraction::new(1, 1));
+        assert!(elements[2].1.is_chord());
+    }
+
+    #[test]
+    fn test_implode_preserves_measure_structure_unlike_chordify() {
+        use crate::core::{Note, Pitch, Step};
+        use crate::stream::MusicElement;
+
+        // Two 2-measure parts.
+        let mut part1 = Part::with_name("Soprano");
+        let mut p1m1 = Measure::new(1);
+        p1m1.set_time_signature(TimeSignature::new(4, 4));
+        p1m1.insert(
+            Fraction::new(0, 1),
+            MusicElement::Note(Note::quarter(Pitch::from_parts(Step::C, Some(4), None))),
+        );
+        part1.add_measure(p1m1);
+        let mut p1m2 = Measure::new(2);
+        p1m2.insert(
+            Fraction::new(0, 1),
+            MusicElement::Note(Note::quarter(Pitch::from_parts(Step::D, Some(4), None))),
+        );
+        part1.add_measure(p1m2);
+
+        let mut part2 = Part::with_name("Alto");
+        let mut p2m1 = Measure::new(1);
+        p2m1.insert(
+            Fraction::new(0, 1),
+            MusicElement::Note(Note::quarter(Pitch::from_parts(Step::G, Some(3), None))),
+        );
+        part2.add_measure(p2m1);
+        let mut p2m2 = Measure::new(2);
+        p2m2.insert(
+            Fraction::new(0, 1),
+            MusicElement::Note(Note::quarter(Pitch::from_parts(Step::A, Some(3), None))),
+        );
+        part2.add_measure(p2m2);
+
+        let imploded = Score::implode(&[&part1, &part2]);
+
+        // Unlike chordify (one giant measure), implode keeps 2 measures.
+        assert_eq!(imploded.num_measures(), 2);
+
+        let m1_chord = imploded.measure(0).unwrap().elements()[0].1.as_chord().unwrap();
+        let names1: Vec<String> = m1_chord.pitches().iter().map(|p| p.name()).collect();
+        assert!(names1.contains(&"C".to_string()));
+        assert!(names1.contains(&"G".to_string()));
+
+        let m2_chord = imploded.measure(1).unwrap().elements()[0].1.as_chord().unwrap();
+        let names2: Vec<String> = m2_chord.pitches().iter().map(|p| p.name()).collect();
+        assert!(names2.contains(&"D".to_string()));
+        assert!(names2.contains(&"A".to_string()));
+    }
+
+    #[test]
+    fn test_get_instruments_skips_unset_parts() {
+        use super::super::part::Instrument;
+
+        let mut score = Score::new();
+        let mut violin = Part::with_name("Violin I");
+        violin.set_instrument(Instrument::violin());
+        score.add_part(violin);
+        score.add_part(Part::with_name("Unassigned")); // no instrument set
+
+        let instruments = score.get_instruments();
+        assert_eq!(instruments.len(), 1);
+        assert_eq!(instruments[0].name(), "Violin");
     }
 
     #[test]

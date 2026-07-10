@@ -4,7 +4,7 @@
 
 use std::fmt;
 
-use super::event::MidiEvent;
+use super::event::{compare_events, MidiEvent, NoteSortOrder};
 use super::message::{MetaEvent, MidiMessage};
 
 /// A MIDI track containing events
@@ -67,6 +67,11 @@ impl MidiTrack {
         self.events.len()
     }
 
+    /// Reserve capacity for at least `additional` more events.
+    pub fn reserve(&mut self, additional: usize) {
+        self.events.reserve(additional);
+    }
+
     /// Check if the track is empty
     pub fn is_empty(&self) -> bool {
         self.events.is_empty()
@@ -107,21 +112,48 @@ impl MidiTrack {
         self.sorted = true;
     }
 
-    /// Sort events by tick time
+    /// Sort events by tick time (note-ons before note-offs at the same tick,
+    /// matching upstream midifile's default). Rust's `Vec::sort` is stable,
+    /// so events that compare equal keep their current relative order
+    /// without needing an internally-assigned sequence number; explicit
+    /// sequence numbers (see `mark_sequence`) are only used when the caller
+    /// has opted in.
     pub fn sort(&mut self) {
-        if !self.sorted {
-            // Assign sequence numbers for stable sort
-            for (i, event) in self.events.iter_mut().enumerate() {
-                event.set_seq(i as u32);
-            }
-            self.events.sort();
-            self.sorted = true;
+        self.sort_with_order(NoteSortOrder::NoteOnsBeforeOffs);
+    }
+
+    /// Sort events by tick time with an explicit note-on/off tie-break order.
+    pub fn sort_with_order(&mut self, order: NoteSortOrder) {
+        if !self.sorted || order != NoteSortOrder::NoteOnsBeforeOffs {
+            self.events.sort_by(|a, b| compare_events(a, b, order));
+            self.sorted = order == NoteSortOrder::NoteOnsBeforeOffs;
         }
     }
 
     /// Check if events are sorted
     pub fn is_sorted(&self) -> bool {
         self.sorted
+    }
+
+    /// Assign sequential, 1-based sequence numbers to events in their
+    /// current order. Call right after reading a file (or whenever the
+    /// current in-memory order should be preserved) so that a later `sort()`
+    /// treats same-tick events as already correctly ordered rather than
+    /// falling back to type-based priority. Mirrors upstream midifile's
+    /// `markSequence()`.
+    pub fn mark_sequence(&mut self) {
+        for (i, event) in self.events.iter_mut().enumerate() {
+            event.set_seq(i as u32 + 1);
+        }
+    }
+
+    /// Clear sequence numbers assigned by `mark_sequence`, reverting to
+    /// pure type-based tie-breaking on the next sort. Mirrors upstream
+    /// midifile's `clearSequence()`.
+    pub fn clear_sequence(&mut self) {
+        for event in self.events.iter_mut() {
+            event.set_seq(0);
+        }
     }
 
     /// Get the last tick time
@@ -187,6 +219,72 @@ impl MidiTrack {
         }
     }
 
+    /// Link note on/off events using LIFO (last-in-first-out) pairing
+    /// instead of the FIFO pairing `link_note_events` uses. This correctly
+    /// pairs overlapping/nested same-key note-on events (e.g. legato
+    /// re-triggers or ornamentation), where FIFO pairing would associate a
+    /// note-off with the wrong note-on and produce the wrong duration.
+    pub fn link_note_pairs_lifo(&mut self) {
+        self.sort();
+
+        let mut active_notes: Vec<Vec<usize>> = vec![vec![]; 16 * 128];
+
+        for i in 0..self.events.len() {
+            let event = &self.events[i];
+
+            if let Some(channel) = event.channel() {
+                if let Some(key) = event.key() {
+                    let idx = (channel as usize) * 128 + (key as usize);
+
+                    if event.is_note_on() {
+                        active_notes[idx].push(i);
+                    } else if event.is_note_off() {
+                        if let Some(on_idx) = active_notes[idx].pop() {
+                            self.events[on_idx].set_linked_event(Some(i));
+                            self.events[i].set_linked_event(Some(on_idx));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Link on/off transitions for pedal-style controllers (sustain,
+    /// portamento, sostenuto, soft pedal, legato, hold 2, and the four
+    /// general-purpose buttons), the same way `link_note_events` links note
+    /// on/off pairs. A controller value >= 64 counts as "on"; < 64 as "off".
+    pub fn link_controller_pairs(&mut self) {
+        const PEDAL_CONTROLLERS: [u8; 10] = [64, 65, 66, 67, 68, 69, 80, 81, 82, 83];
+
+        self.sort();
+        let mut pending: std::collections::HashMap<(u8, u8), usize> =
+            std::collections::HashMap::new();
+
+        for i in 0..self.events.len() {
+            let (channel, controller, value) = {
+                let event = &self.events[i];
+                match (
+                    event.channel(),
+                    event.message().get_controller_number(),
+                    event.message().get_controller_value(),
+                ) {
+                    (Some(ch), Some(cc), Some(val)) if PEDAL_CONTROLLERS.contains(&cc) => {
+                        (ch, cc, val)
+                    }
+                    _ => continue,
+                }
+            };
+
+            let key = (channel, controller);
+            if value >= 64 {
+                pending.insert(key, i);
+            } else if let Some(on_idx) = pending.remove(&key) {
+                self.events[on_idx].set_linked_event(Some(i));
+                self.events[i].set_linked_event(Some(on_idx));
+            }
+        }
+    }
+
     /// Unlink all note events
     pub fn unlink_note_events(&mut self) {
         for event in &mut self.events {
@@ -243,6 +341,124 @@ impl MidiTrack {
         self.add_event(MidiEvent::new(tick, MidiMessage::Meta(meta)));
     }
 
+    /// Add a compound-meter time signature event (e.g. 6/8), using the
+    /// upstream-matching default of 36 clocks per metronome click.
+    pub fn add_compound_time_signature(&mut self, tick: u64, numerator: u8, denominator: u8) {
+        let meta = MetaEvent::compound_time_signature(numerator, denominator);
+        self.add_event(MidiEvent::new(tick, MidiMessage::Meta(meta)));
+    }
+
+    /// Add a pitch bend event
+    pub fn add_pitch_bend(&mut self, tick: u64, channel: u8, value: u16) {
+        self.add_event(MidiEvent::new(tick, MidiMessage::pitch_bend(channel, value)));
+    }
+
+    /// Add a controller (control change) event
+    pub fn add_controller(&mut self, tick: u64, channel: u8, controller: u8, value: u8) {
+        self.add_control_change(tick, channel, controller, value);
+    }
+
+    /// Add a sustain pedal event with an explicit value
+    pub fn add_sustain(&mut self, tick: u64, channel: u8, value: u8) {
+        self.add_event(MidiEvent::new(tick, MidiMessage::make_sustain(channel, value)));
+    }
+
+    /// Add a sustain pedal on event
+    pub fn add_sustain_on(&mut self, tick: u64, channel: u8) {
+        self.add_sustain(tick, channel, 127);
+    }
+
+    /// Add a sustain pedal off event
+    pub fn add_sustain_off(&mut self, tick: u64, channel: u8) {
+        self.add_sustain(tick, channel, 0);
+    }
+
+    /// Add a sustain pedal event. Alias of `add_sustain`.
+    pub fn add_pedal(&mut self, tick: u64, channel: u8, value: u8) {
+        self.add_sustain(tick, channel, value);
+    }
+
+    /// Add a sustain pedal on event. Alias of `add_sustain_on`.
+    pub fn add_pedal_on(&mut self, tick: u64, channel: u8) {
+        self.add_sustain_on(tick, channel);
+    }
+
+    /// Add a sustain pedal off event. Alias of `add_sustain_off`.
+    pub fn add_pedal_off(&mut self, tick: u64, channel: u8) {
+        self.add_sustain_off(tick, channel);
+    }
+
+    /// Add a patch (program) change event. Alias of `add_program_change`.
+    pub fn add_patch_change(&mut self, tick: u64, channel: u8, program: u8) {
+        self.add_program_change(tick, channel, program);
+    }
+
+    /// Add a timbre change event. Alias of `add_program_change`.
+    pub fn add_timbre(&mut self, tick: u64, channel: u8, program: u8) {
+        self.add_program_change(tick, channel, program);
+    }
+
+    /// Add a generic meta event
+    pub fn add_meta_event(&mut self, tick: u64, meta: MetaEvent) {
+        self.add_event(MidiEvent::new(tick, MidiMessage::Meta(meta)));
+    }
+
+    /// Add a text meta event
+    pub fn add_text(&mut self, tick: u64, text: impl Into<String>) {
+        self.add_meta_event(tick, MetaEvent::Text(text.into()));
+    }
+
+    /// Add a copyright meta event
+    pub fn add_copyright(&mut self, tick: u64, text: impl Into<String>) {
+        self.add_meta_event(tick, MetaEvent::Copyright(text.into()));
+    }
+
+    /// Add a track name meta event
+    pub fn add_track_name(&mut self, tick: u64, name: impl Into<String>) {
+        self.add_meta_event(tick, MetaEvent::TrackName(name.into()));
+    }
+
+    /// Add an instrument name meta event
+    pub fn add_instrument_name(&mut self, tick: u64, name: impl Into<String>) {
+        self.add_meta_event(tick, MetaEvent::InstrumentName(name.into()));
+    }
+
+    /// Add a lyric meta event
+    pub fn add_lyric(&mut self, tick: u64, text: impl Into<String>) {
+        self.add_meta_event(tick, MetaEvent::Lyric(text.into()));
+    }
+
+    /// Add a marker meta event
+    pub fn add_marker(&mut self, tick: u64, text: impl Into<String>) {
+        self.add_meta_event(tick, MetaEvent::Marker(text.into()));
+    }
+
+    /// Add a cue point meta event
+    pub fn add_cue(&mut self, tick: u64, text: impl Into<String>) {
+        self.add_meta_event(tick, MetaEvent::CuePoint(text.into()));
+    }
+
+    /// Write the RPN (Registered Parameter Number) sequence to set the
+    /// pitch-bend range on a channel, in semitones (+ optional cents via the
+    /// LSB data-entry value). This is the standard RPN 0 (pitch bend range)
+    /// sequence: select RPN 0 via CC 101/100, then set the value via CC 6/38,
+    /// then deselect the RPN (CC 101/100 = 127/127) so subsequent data-entry
+    /// messages don't accidentally alter it.
+    pub fn add_pitch_bend_range(
+        &mut self,
+        tick: u64,
+        channel: u8,
+        semitones: u8,
+        cents: u8,
+    ) {
+        self.add_controller(tick, channel, 101, 0); // RPN MSB = 0
+        self.add_controller(tick, channel, 100, 0); // RPN LSB = 0 (pitch bend range)
+        self.add_controller(tick, channel, 6, semitones.min(127)); // Data entry MSB
+        self.add_controller(tick, channel, 38, cents.min(127)); // Data entry LSB
+        self.add_controller(tick, channel, 101, 127); // Deselect RPN
+        self.add_controller(tick, channel, 100, 127);
+    }
+
     /// Add an end of track marker
     pub fn add_end_of_track(&mut self) {
         let last_tick = self.last_tick();
@@ -297,17 +513,29 @@ impl MidiTrack {
         for event in &self.events {
             // Include meta events and events for this channel
             if event.is_meta() || event.channel() == Some(channel) {
-                track.add_event(event.clone());
+                // linked_event indices refer to positions in *this* track's
+                // event vector; they would silently point at the wrong (or
+                // out-of-bounds) event once copied into the new, differently
+                // indexed vector, so clear them here. Call `link_note_events()`
+                // on the result if linked note durations are needed.
+                let mut event = event.clone();
+                event.unlink_event();
+                track.add_event(event);
             }
         }
         track.sort();
         track
     }
 
-    /// Merge another track into this one
+    /// Merge another track into this one. As with `extract_channel`, the
+    /// merged-in events' `linked_event` indices are cleared since they would
+    /// otherwise point at the wrong events in the combined vector; call
+    /// `link_note_events()` afterward if linked durations are needed.
     pub fn merge(&mut self, other: &MidiTrack) {
         for event in &other.events {
-            self.add_event(event.clone());
+            let mut event = event.clone();
+            event.unlink_event();
+            self.add_event(event);
         }
         self.sorted = false;
     }
@@ -351,6 +579,93 @@ impl<'a> IntoIterator for &'a MidiTrack {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_pitch_bend_range_rpn_sequence() {
+        let mut track = MidiTrack::new();
+        track.add_pitch_bend_range(0, 2, 12, 0);
+
+        let ccs: Vec<(u8, u8)> = track
+            .events()
+            .iter()
+            .filter_map(|e| match e.message() {
+                MidiMessage::ControlChange { controller, value, .. } => Some((*controller, *value)),
+                _ => None,
+            })
+            .collect();
+
+        assert_eq!(
+            ccs,
+            vec![(101, 0), (100, 0), (6, 12), (38, 0), (101, 127), (100, 127)]
+        );
+    }
+
+    #[test]
+    fn test_meta_convenience_adders() {
+        let mut track = MidiTrack::new();
+        track.add_text(0, "hello");
+        track.add_lyric(10, "la");
+        track.add_marker(20, "verse 1");
+        track.add_track_name(0, "Piano");
+
+        assert!(matches!(track.events()[0].message(), MidiMessage::Meta(MetaEvent::Text(s)) if s == "hello"));
+        assert!(matches!(track.events()[1].message(), MidiMessage::Meta(MetaEvent::Lyric(s)) if s == "la"));
+        assert!(matches!(track.events()[2].message(), MidiMessage::Meta(MetaEvent::Marker(s)) if s == "verse 1"));
+        assert!(matches!(track.events()[3].message(), MidiMessage::Meta(MetaEvent::TrackName(s)) if s == "Piano"));
+    }
+
+    #[test]
+    fn test_sustain_and_compound_time_signature_adders() {
+        let mut track = MidiTrack::new();
+        track.add_sustain_on(0, 0);
+        track.add_sustain_off(480, 0);
+        track.add_compound_time_signature(0, 6, 8);
+
+        assert!(track.events()[0].message().is_sustain_on());
+        assert!(track.events()[1].message().is_sustain_off());
+        assert!(matches!(
+            track.events()[2].message(),
+            MidiMessage::Meta(MetaEvent::TimeSignature { numerator: 6, clocks_per_click: 36, .. })
+        ));
+    }
+
+    #[test]
+    fn test_link_note_pairs_lifo_vs_fifo() {
+        // Two overlapping note-ons on the same key (e.g. a legato re-trigger)
+        // followed by two note-offs. FIFO pairing would link the first
+        // note-on to the first note-off (duration 100), which is wrong for
+        // nested/overlapping notes; LIFO pairing links the most recent
+        // note-on to the next note-off (duration 50), matching the nesting.
+        let mut track = MidiTrack::new();
+        track.add_event(MidiEvent::note_on(0, 0, 60, 100));
+        track.add_event(MidiEvent::note_on(50, 0, 60, 100));
+        track.add_event(MidiEvent::note_off(100, 0, 60, 0));
+        track.add_event(MidiEvent::note_off(150, 0, 60, 0));
+
+        track.link_note_pairs_lifo();
+        track.sort();
+
+        let events = track.events();
+        // Second note-on (tick 50) pairs with the first note-off (tick 100).
+        let second_on = &events[1];
+        assert_eq!(second_on.tick(), 50);
+        let linked = second_on.linked_event().unwrap();
+        assert_eq!(events[linked].tick(), 100);
+    }
+
+    #[test]
+    fn test_link_controller_pairs_sustain() {
+        let mut track = MidiTrack::new();
+        track.add_sustain_on(0, 0);
+        track.add_sustain_off(480, 0);
+
+        track.link_controller_pairs();
+
+        let on = &track.events()[0];
+        assert!(on.is_linked());
+        let off_idx = on.linked_event().unwrap();
+        assert_eq!(track.events()[off_idx].tick(), 480);
+    }
 
     #[test]
     fn test_track_creation() {

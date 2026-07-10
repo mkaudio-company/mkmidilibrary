@@ -118,44 +118,288 @@ impl NoteHead {
     }
 }
 
-/// Articulation type
+/// Type of articulation mark. This is the single, unified articulation
+/// enum for the whole crate: it used to be duplicated as a poorer
+/// `core::note::ArticulationType` (used by `Note`/`Articulation`) and a
+/// richer `notation::articulation::ArticulationMark` (with symbols,
+/// velocity/duration multipliers, and fermata-shape variants) that nothing
+/// actually attached to a `Note` could reach. `notation::articulation`
+/// re-exports this type for backward-compatible access from that module
+/// path.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ArticulationType {
+pub enum ArticulationMark {
+    /// Accent (>)
     Accent,
+    /// Strong accent (^)
     StrongAccent,
+    /// Staccato (.)
     Staccato,
+    /// Staccatissimo (wedge)
     Staccatissimo,
+    /// Tenuto (-)
     Tenuto,
+    /// Detached legato (tenuto + staccato)
     DetachedLegato,
-    Spiccato,
-    Scoop,
-    Plop,
-    Doit,
-    Falloff,
-    BreathMark,
-    Caesura,
+    /// Marcato (^)
+    Marcato,
+    /// Fermata
     Fermata,
+    /// Short fermata
+    ShortFermata,
+    /// Long fermata
+    LongFermata,
+    /// Breath mark
+    BreathMark,
+    /// Caesura
+    Caesura,
+    /// Up bow (string)
     UpBow,
+    /// Down bow (string)
     DownBow,
+    /// Harmonic
     Harmonic,
+    /// Open string
     OpenString,
-    Pizzicato,
-    SnapPizzicato,
+    /// Stopped (brass)
     Stopped,
+    /// Pizzicato
+    Pizzicato,
+    /// Snap pizzicato
+    SnapPizzicato,
+    /// Thumb position
+    ThumbPosition,
+    /// Pluck (guitar)
+    Pluck,
+    /// Double tongue
+    DoubleTongue,
+    /// Triple tongue
+    TripleTongue,
+    /// Heel (organ pedal)
+    Heel,
+    /// Toe (organ pedal)
+    Toe,
+    /// Spiccato (bounced bow)
+    Spiccato,
+    /// Scoop (slide into a note from below)
+    Scoop,
+    /// Plop (slide into a note from above)
+    Plop,
+    /// Doit (slide up and away after a note)
+    Doit,
+    /// Falloff (slide down and away after a note)
+    Falloff,
+    /// Stress (early-music metric-accent mark)
+    Stress,
+    /// Unstress (early-music de-emphasis mark)
+    Unstress,
+    /// Natural string harmonic (distinct from the generic `Harmonic`,
+    /// which doesn't specify the production technique)
+    StringHarmonic,
+    /// Fret position indication for a fretted instrument (fret number)
+    Fret(u8),
+    /// String number indication for a fretted/bowed-string instrument
+    StringNumber(u8),
+    /// Handbell technique indication (e.g. martellato, mallet, damp) —
+    /// simplified to a single generic marker rather than a full handbell
+    /// technique taxonomy.
+    HandbellIndication,
+    /// Harp fingernails (pluck with fingernails for a metallic timbre)
+    HarpFingerNails,
+    /// Generic woodwind special-technique indication (e.g.
+    /// flutter-tongue, half-hole) — simplified to a single marker rather
+    /// than a full per-technique taxonomy.
+    WoodwindIndication,
+    /// Generic brass special-technique indication (e.g. muted, flutter,
+    /// half-valve) — simplified to a single marker rather than a full
+    /// per-technique taxonomy.
+    BrassIndication,
+}
+
+impl ArticulationMark {
+    /// Get the symbol
+    pub fn symbol(&self) -> &'static str {
+        match self {
+            ArticulationMark::Accent => ">",
+            ArticulationMark::StrongAccent => "^",
+            ArticulationMark::Staccato => ".",
+            ArticulationMark::Staccatissimo => "▼",
+            ArticulationMark::Tenuto => "-",
+            ArticulationMark::DetachedLegato => "-.",
+            ArticulationMark::Marcato => "^",
+            ArticulationMark::Fermata => "𝄐",
+            ArticulationMark::ShortFermata => "𝄑",
+            ArticulationMark::LongFermata => "𝄒",
+            ArticulationMark::BreathMark => ",",
+            ArticulationMark::Caesura => "//",
+            ArticulationMark::UpBow => "∨",
+            ArticulationMark::DownBow => "∏",
+            ArticulationMark::Harmonic => "○",
+            ArticulationMark::OpenString => "○",
+            ArticulationMark::Stopped => "+",
+            ArticulationMark::Pizzicato => "+",
+            ArticulationMark::SnapPizzicato => "⊙",
+            ArticulationMark::ThumbPosition => "◯",
+            ArticulationMark::Pluck => "i",
+            ArticulationMark::DoubleTongue => "‥",
+            ArticulationMark::TripleTongue => "…",
+            ArticulationMark::Heel => "U",
+            ArticulationMark::Toe => "^",
+            ArticulationMark::Spiccato => "'",
+            ArticulationMark::Scoop => "⌒",
+            ArticulationMark::Plop => "⌒",
+            ArticulationMark::Doit => "⌒",
+            ArticulationMark::Falloff => "⌒",
+            ArticulationMark::Stress => "▵",
+            ArticulationMark::Unstress => "▿",
+            ArticulationMark::StringHarmonic => "◇",
+            ArticulationMark::Fret(_) => "fr.",
+            ArticulationMark::StringNumber(_) => "#",
+            ArticulationMark::HandbellIndication => "hb.",
+            ArticulationMark::HarpFingerNails => "n.",
+            ArticulationMark::WoodwindIndication => "ww.",
+            ArticulationMark::BrassIndication => "br.",
+        }
+    }
+
+    /// Get the name
+    pub fn name(&self) -> &'static str {
+        match self {
+            ArticulationMark::Accent => "accent",
+            ArticulationMark::StrongAccent => "strong accent",
+            ArticulationMark::Staccato => "staccato",
+            ArticulationMark::Staccatissimo => "staccatissimo",
+            ArticulationMark::Tenuto => "tenuto",
+            ArticulationMark::DetachedLegato => "detached legato",
+            ArticulationMark::Marcato => "marcato",
+            ArticulationMark::Fermata => "fermata",
+            ArticulationMark::ShortFermata => "short fermata",
+            ArticulationMark::LongFermata => "long fermata",
+            ArticulationMark::BreathMark => "breath mark",
+            ArticulationMark::Caesura => "caesura",
+            ArticulationMark::UpBow => "up bow",
+            ArticulationMark::DownBow => "down bow",
+            ArticulationMark::Harmonic => "harmonic",
+            ArticulationMark::OpenString => "open string",
+            ArticulationMark::Stopped => "stopped",
+            ArticulationMark::Pizzicato => "pizzicato",
+            ArticulationMark::SnapPizzicato => "snap pizzicato",
+            ArticulationMark::ThumbPosition => "thumb position",
+            ArticulationMark::Pluck => "pluck",
+            ArticulationMark::DoubleTongue => "double tongue",
+            ArticulationMark::TripleTongue => "triple tongue",
+            ArticulationMark::Heel => "heel",
+            ArticulationMark::Toe => "toe",
+            ArticulationMark::Spiccato => "spiccato",
+            ArticulationMark::Scoop => "scoop",
+            ArticulationMark::Plop => "plop",
+            ArticulationMark::Doit => "doit",
+            ArticulationMark::Falloff => "falloff",
+            ArticulationMark::Stress => "stress",
+            ArticulationMark::Unstress => "unstress",
+            ArticulationMark::StringHarmonic => "string harmonic",
+            ArticulationMark::Fret(_) => "fret",
+            ArticulationMark::StringNumber(_) => "string number",
+            ArticulationMark::HandbellIndication => "handbell indication",
+            ArticulationMark::HarpFingerNails => "harp fingernails",
+            ArticulationMark::WoodwindIndication => "woodwind indication",
+            ArticulationMark::BrassIndication => "brass indication",
+        }
+    }
+
+    /// The fret number, for a `Fret` marking.
+    pub fn fret_number(&self) -> Option<u8> {
+        match self {
+            ArticulationMark::Fret(n) => Some(*n),
+            _ => None,
+        }
+    }
+
+    /// The string number, for a `StringNumber` marking.
+    pub fn string_number(&self) -> Option<u8> {
+        match self {
+            ArticulationMark::StringNumber(n) => Some(*n),
+            _ => None,
+        }
+    }
+
+    /// Additive velocity shift (added directly to the base MIDI velocity,
+    /// unlike `velocity_multiplier`'s proportional scaling), used
+    /// alongside the multiplicative model rather than replacing it.
+    /// Mirrors music21's `Accent`, whose accent effect is modeled
+    /// additively — a fixed boost sounds musically correct at both a
+    /// quiet base dynamic (where a multiplier alone barely moves the
+    /// needle) and a loud one (where a multiplier alone can overshoot).
+    pub fn volume_shift(&self) -> i8 {
+        match self {
+            ArticulationMark::Accent => 16,
+            ArticulationMark::StrongAccent | ArticulationMark::Marcato => 24,
+            _ => 0,
+        }
+    }
+
+    /// Get the velocity multiplier used by `Volume::get_realized`
+    pub fn velocity_multiplier(&self) -> f64 {
+        match self {
+            ArticulationMark::Accent => 1.2,
+            ArticulationMark::StrongAccent | ArticulationMark::Marcato => 1.4,
+            ArticulationMark::Staccato => 0.9,
+            ArticulationMark::Staccatissimo => 1.1,
+            ArticulationMark::Tenuto => 1.0,
+            ArticulationMark::DetachedLegato => 0.95,
+            _ => 1.0,
+        }
+    }
+
+    /// Get the duration multiplier used by `Note::realized_quarter_length`
+    pub fn duration_multiplier(&self) -> f64 {
+        match self {
+            ArticulationMark::Staccato => 0.5,
+            ArticulationMark::Staccatissimo => 0.25,
+            ArticulationMark::Tenuto => 1.0,
+            ArticulationMark::DetachedLegato => 0.75,
+            _ => 1.0,
+        }
+    }
+
+    /// Check if this affects note duration
+    pub fn affects_duration(&self) -> bool {
+        matches!(
+            self,
+            ArticulationMark::Staccato
+                | ArticulationMark::Staccatissimo
+                | ArticulationMark::DetachedLegato
+        )
+    }
+
+    /// Check if this is a fermata type
+    pub fn is_fermata(&self) -> bool {
+        matches!(
+            self,
+            ArticulationMark::Fermata
+                | ArticulationMark::ShortFermata
+                | ArticulationMark::LongFermata
+        )
+    }
+}
+
+impl fmt::Display for ArticulationMark {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name())
+    }
 }
 
 /// An articulation marking
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Articulation {
     /// Articulation type
-    pub type_: ArticulationType,
+    pub type_: ArticulationMark,
     /// Placement (above/below)
     pub placement: Option<Placement>,
 }
 
 impl Articulation {
     /// Create a new articulation
-    pub fn new(type_: ArticulationType) -> Self {
+    pub fn new(type_: ArticulationMark) -> Self {
         Self {
             type_,
             placement: None,
@@ -164,22 +408,22 @@ impl Articulation {
 
     /// Create a staccato
     pub fn staccato() -> Self {
-        Self::new(ArticulationType::Staccato)
+        Self::new(ArticulationMark::Staccato)
     }
 
     /// Create an accent
     pub fn accent() -> Self {
-        Self::new(ArticulationType::Accent)
+        Self::new(ArticulationMark::Accent)
     }
 
     /// Create a tenuto
     pub fn tenuto() -> Self {
-        Self::new(ArticulationType::Tenuto)
+        Self::new(ArticulationMark::Tenuto)
     }
 
     /// Create a fermata
     pub fn fermata() -> Self {
-        Self::new(ArticulationType::Fermata)
+        Self::new(ArticulationMark::Fermata)
     }
 }
 
@@ -247,6 +491,9 @@ pub struct Lyric {
     pub syllabic: Syllabic,
     /// Verse number (1-indexed)
     pub number: u8,
+    /// Optional verse identifier/name (distinct from the numeric
+    /// `number`), e.g. "chorus" or "refrain".
+    pub identifier: Option<String>,
 }
 
 impl Lyric {
@@ -256,6 +503,7 @@ impl Lyric {
             text: text.into(),
             syllabic: Syllabic::Single,
             number: 1,
+            identifier: None,
         }
     }
 
@@ -270,6 +518,52 @@ impl Lyric {
         self.number = number;
         self
     }
+
+    /// Set the verse identifier/name.
+    pub fn with_identifier(mut self, identifier: impl Into<String>) -> Self {
+        self.identifier = Some(identifier.into());
+        self
+    }
+
+    /// Get the verse identifier/name.
+    pub fn identifier(&self) -> Option<&str> {
+        self.identifier.as_deref()
+    }
+
+    /// Parse raw hyphenated lyric text into one or more syllable-tagged
+    /// `Lyric`s, e.g. `"con-tra-ry"` -> `[Begin("con"), Middle("tra"),
+    /// End("ry")]`. Text with no hyphens produces a single
+    /// `Syllabic::Single` lyric. Mirrors music21's `Lyric.setTextAndSyllabic`
+    /// raw-text auto-syllabification.
+    pub fn from_raw_text(raw_text: &str, number: u8) -> Vec<Lyric> {
+        let parts: Vec<&str> = raw_text.split('-').collect();
+        if parts.len() == 1 {
+            vec![Lyric::new(raw_text).with_number(number)]
+        } else {
+            let last = parts.len() - 1;
+            parts
+                .into_iter()
+                .enumerate()
+                .map(|(i, part)| {
+                    let syllabic = if i == 0 {
+                        Syllabic::Begin
+                    } else if i == last {
+                        Syllabic::End
+                    } else {
+                        Syllabic::Middle
+                    };
+                    Lyric::new(part).with_syllabic(syllabic).with_number(number)
+                })
+                .collect()
+        }
+    }
+}
+
+/// Whether a set of lyrics (e.g. as produced by `Lyric::from_raw_text`)
+/// represents a composite (multi-syllable) lyric line rather than a single
+/// whole-word lyric.
+pub fn is_composite_lyric_set(lyrics: &[Lyric]) -> bool {
+    lyrics.len() > 1
 }
 
 /// Volume/velocity information
@@ -302,6 +596,22 @@ impl Volume {
     pub fn mf() -> Self {
         Self::from_velocity(80)
     }
+
+    /// Compute the realized (effective) volume after applying the given
+    /// articulations' velocity multipliers (e.g. an accent boosts velocity).
+    /// Multipliers compound multiplicatively across all attached
+    /// articulations and the result is clamped to the valid MIDI velocity
+    /// range. Use `Note::realized_volume` to apply a note's own
+    /// articulations automatically.
+    pub fn get_realized(&self, articulations: &[Articulation]) -> Volume {
+        let multiplier: f64 = articulations
+            .iter()
+            .map(|a| a.type_.velocity_multiplier())
+            .product();
+        let shift: i32 = articulations.iter().map(|a| a.type_.volume_shift() as i32).sum();
+        let shifted = (self.velocity as f64 * multiplier).round() as i32 + shift;
+        Volume::from_velocity(shifted.clamp(0, 127) as u8)
+    }
 }
 
 impl Default for Volume {
@@ -333,8 +643,10 @@ pub struct Note {
     notehead: NoteHead,
     /// Stem direction
     stem_direction: StemDirection,
-    /// Whether this is a grace note
-    is_grace: bool,
+    /// Whether this is a grace note, and if so, whether it is slashed
+    /// (`Some(true)` = acciaccatura/short grace, `Some(false)` =
+    /// appoggiatura/long grace). `None` means this is not a grace note.
+    grace_slash: Option<bool>,
 }
 
 impl Note {
@@ -351,7 +663,7 @@ impl Note {
             volume: Volume::default(),
             notehead: NoteHead::default(),
             stem_direction: StemDirection::default(),
-            is_grace: false,
+            grace_slash: None,
         }
     }
 
@@ -495,6 +807,26 @@ impl Note {
         self.volume = Volume::from_velocity(velocity);
     }
 
+    /// Get the realized (effective) volume after applying this note's own
+    /// attached articulations' velocity multipliers (see
+    /// `Volume::get_realized`).
+    pub fn realized_volume(&self) -> Volume {
+        self.volume.get_realized(&self.articulations)
+    }
+
+    /// Get the realized (effective) quarter-note length after applying this
+    /// note's attached articulations' duration multipliers (e.g. staccato
+    /// shortens the sounding duration without changing the notated
+    /// duration returned by `duration()`).
+    pub fn realized_quarter_length(&self) -> f64 {
+        let multiplier: f64 = self
+            .articulations
+            .iter()
+            .map(|a| a.type_.duration_multiplier())
+            .product();
+        self.duration.quarter_length_f64() * multiplier
+    }
+
     /// Get the notehead
     pub fn notehead(&self) -> &NoteHead {
         &self.notehead
@@ -517,13 +849,31 @@ impl Note {
 
     /// Check if this is a grace note
     pub fn is_grace(&self) -> bool {
-        self.is_grace
+        self.grace_slash.is_some()
     }
 
-    /// Convert to a grace note
+    /// Whether this grace note is slashed (acciaccatura, `Some(true)`) or
+    /// unslashed (appoggiatura, `Some(false)`); `None` if this isn't a
+    /// grace note at all.
+    pub fn is_grace_slashed(&self) -> Option<bool> {
+        self.grace_slash
+    }
+
+    /// Convert to a slashed grace note (acciaccatura, the common "short"
+    /// grace note). Use `to_appoggiatura` for an unslashed grace note.
     pub fn to_grace(&self) -> Note {
         let mut grace = self.clone();
-        grace.is_grace = true;
+        grace.grace_slash = Some(true);
+        grace.duration = Duration::zero();
+        grace
+    }
+
+    /// Convert to an unslashed appoggiatura-style grace note, which
+    /// traditionally steals notated time from the note it precedes (unlike
+    /// a slashed acciaccatura, which is not counted against the beat).
+    pub fn to_appoggiatura(&self) -> Note {
+        let mut grace = self.clone();
+        grace.grace_slash = Some(false);
         grace.duration = Duration::zero();
         grace
     }
@@ -540,6 +890,31 @@ impl Note {
         let mut transposed = self.clone();
         transposed.pitch = self.pitch.transpose_semitones(semitones);
         transposed
+    }
+
+    /// Transpose by an interval given as a string (e.g. "P5", "-m3"),
+    /// parsed via `Interval`'s `FromStr` implementation.
+    pub fn transpose_str(&self, interval: &str) -> Result<Note, super::ParseError> {
+        let interval: Interval = interval.parse()?;
+        Ok(self.transpose(&interval))
+    }
+
+    /// Get this note's pitch as a single-element vector, for writing code
+    /// that treats `Note` and `Chord` uniformly (a `Chord` has multiple
+    /// pitches; a `Note` always has exactly one).
+    pub fn pitches(&self) -> Vec<&Pitch> {
+        vec![&self.pitch]
+    }
+
+    /// Get a human-readable summary of this note, e.g.
+    /// "C-sharp in octave 4 Quarter Note".
+    pub fn full_name(&self) -> String {
+        format!(
+            "{} in octave {} {}",
+            self.pitch.name(),
+            self.pitch.implicit_octave(),
+            self.duration.full_name()
+        )
     }
 
     /// Scale the duration
@@ -582,6 +957,67 @@ impl Ord for Note {
     }
 }
 
+/// A percussion-style note with no real pitch: only a display position on
+/// the staff (e.g. for a specific drum/percussion instrument line) and a
+/// duration. Mirrors music21's `note.Unpitched`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Unpitched {
+    /// Staff display position (in the same line/space units as a staff
+    /// position; 0 = middle line).
+    display_position: i8,
+    /// Duration
+    duration: Duration,
+}
+
+impl Unpitched {
+    /// Create a new unpitched note with the given duration, displayed on
+    /// the middle line by default.
+    pub fn new(duration: Duration) -> Self {
+        Self {
+            display_position: 0,
+            duration,
+        }
+    }
+
+    /// Get the staff display position.
+    pub fn display_position(&self) -> i8 {
+        self.display_position
+    }
+
+    /// Set the staff display position.
+    pub fn set_display_position(&mut self, position: i8) {
+        self.display_position = position;
+    }
+
+    /// Get the duration.
+    pub fn duration(&self) -> &Duration {
+        &self.duration
+    }
+
+    /// Set the duration.
+    pub fn set_duration(&mut self, duration: Duration) {
+        self.duration = duration;
+    }
+
+    /// Get the quarter length.
+    pub fn quarter_length(&self) -> Fraction {
+        self.duration.quarter_length()
+    }
+
+    /// Human-readable display name — there's no real pitch, so this
+    /// describes the staff position instead (mirroring music21's
+    /// `Unpitched.displayName`).
+    pub fn display_name(&self) -> String {
+        format!("staff position {}", self.display_position)
+    }
+}
+
+impl fmt::Display for Unpitched {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Unpitched({})", self.display_name())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -617,6 +1053,45 @@ mod tests {
     }
 
     #[test]
+    fn test_articulation_metadata_reachable_from_note() {
+        // Regression test: before unifying the two Articulation enums,
+        // Note::add_articulation only accepted the poorer
+        // core::note::ArticulationType, so the richer metadata (symbols,
+        // velocity/duration multipliers) on notation::articulation::
+        // ArticulationMark was never reachable from an actual Note.
+        let pitch = Pitch::from_parts(Step::C, Some(4), None);
+        let mut note = Note::quarter(pitch);
+        note.add_articulation(Articulation::staccato());
+
+        assert_eq!(note.articulations()[0].type_.symbol(), ".");
+        assert!(note.articulations()[0].type_.affects_duration());
+    }
+
+    #[test]
+    fn test_volume_get_realized_applies_velocity_multiplier() {
+        let volume = Volume::from_velocity(50);
+        let accented = volume.get_realized(&[Articulation::accent()]);
+        // Accent has a 1.2x velocity multiplier plus a +16 additive
+        // volume_shift (50 * 1.2 = 60, + 16 = 76).
+        assert_eq!(accented.velocity, 76);
+
+        let unarticulated = volume.get_realized(&[]);
+        assert_eq!(unarticulated.velocity, 50);
+    }
+
+    #[test]
+    fn test_note_realized_volume_and_duration() {
+        let pitch = Pitch::from_parts(Step::C, Some(4), None);
+        let mut note = Note::quarter(pitch);
+        note.set_velocity(100);
+        note.add_articulation(Articulation::staccato());
+
+        // Staccato: 0.9x velocity, 0.5x duration.
+        assert_eq!(note.realized_volume().velocity, 90);
+        assert!((note.realized_quarter_length() - 0.5).abs() < 1e-9);
+    }
+
+    #[test]
     fn test_note_lyrics() {
         let pitch = Pitch::from_parts(Step::C, Some(4), None);
         let mut note = Note::quarter(pitch);
@@ -634,5 +1109,83 @@ mod tests {
 
         assert!(grace.is_grace());
         assert_eq!(grace.quarter_length(), Fraction::new(0, 1));
+        assert_eq!(grace.is_grace_slashed(), Some(true));
+    }
+
+    #[test]
+    fn test_note_appoggiatura() {
+        let pitch = Pitch::from_parts(Step::C, Some(4), None);
+        let note = Note::quarter(pitch);
+        let appoggiatura = note.to_appoggiatura();
+
+        assert!(appoggiatura.is_grace());
+        assert_eq!(appoggiatura.is_grace_slashed(), Some(false));
+
+        assert_eq!(note.is_grace_slashed(), None);
+    }
+
+    #[test]
+    fn test_note_full_name() {
+        let pitch = Pitch::from_parts(Step::C, Some(4), Some(crate::core::Accidental::Sharp));
+        let note = Note::quarter(pitch);
+        assert_eq!(note.full_name(), "C# in octave 4 quarter");
+    }
+
+    #[test]
+    fn test_note_transpose_str() {
+        let pitch = Pitch::from_parts(Step::C, Some(4), None);
+        let note = Note::quarter(pitch);
+        let transposed = note.transpose_str("P5").unwrap();
+        assert_eq!(transposed.pitch().step(), Step::G);
+
+        assert!(note.transpose_str("bogus").is_err());
+    }
+
+    #[test]
+    fn test_note_pitches_accessor() {
+        let pitch = Pitch::from_parts(Step::D, Some(4), None);
+        let note = Note::quarter(pitch);
+        let pitches = note.pitches();
+        assert_eq!(pitches.len(), 1);
+        assert_eq!(pitches[0].step(), Step::D);
+    }
+
+    #[test]
+    fn test_unpitched() {
+        let mut unpitched = Unpitched::new(Duration::quarter());
+        assert_eq!(unpitched.display_position(), 0);
+        assert_eq!(unpitched.quarter_length(), Fraction::new(1, 1));
+
+        unpitched.set_display_position(3);
+        assert_eq!(unpitched.display_position(), 3);
+        assert_eq!(unpitched.display_name(), "staff position 3");
+    }
+
+    #[test]
+    fn test_lyric_from_raw_text_single_syllable() {
+        let lyrics = Lyric::from_raw_text("hello", 1);
+        assert_eq!(lyrics.len(), 1);
+        assert_eq!(lyrics[0].syllabic, Syllabic::Single);
+        assert!(!is_composite_lyric_set(&lyrics));
+    }
+
+    #[test]
+    fn test_lyric_from_raw_text_multi_syllable() {
+        let lyrics = Lyric::from_raw_text("con-tra-ry", 2);
+        assert_eq!(lyrics.len(), 3);
+        assert_eq!(lyrics[0].text, "con");
+        assert_eq!(lyrics[0].syllabic, Syllabic::Begin);
+        assert_eq!(lyrics[1].text, "tra");
+        assert_eq!(lyrics[1].syllabic, Syllabic::Middle);
+        assert_eq!(lyrics[2].text, "ry");
+        assert_eq!(lyrics[2].syllabic, Syllabic::End);
+        assert!(lyrics.iter().all(|l| l.number == 2));
+        assert!(is_composite_lyric_set(&lyrics));
+    }
+
+    #[test]
+    fn test_lyric_identifier() {
+        let lyric = Lyric::new("la").with_identifier("chorus");
+        assert_eq!(lyric.identifier(), Some("chorus"));
     }
 }

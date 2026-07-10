@@ -5,7 +5,7 @@
 use std::cmp::Ordering;
 use std::fmt;
 
-use super::message::MidiMessage;
+use super::message::{MetaEvent, MidiMessage};
 
 /// A MIDI event with timing information
 #[derive(Debug, Clone, PartialEq)]
@@ -201,6 +201,12 @@ impl MidiEvent {
     pub fn program_change(tick: u64, channel: u8, program: u8) -> Self {
         Self::new(tick, MidiMessage::program_change(channel, program))
     }
+
+    /// Clear the linked-event index (e.g. before a track-restructuring
+    /// operation that would leave it dangling).
+    pub fn unlink_event(&mut self) {
+        self.linked_event = None;
+    }
 }
 
 impl fmt::Display for MidiEvent {
@@ -219,42 +225,81 @@ impl PartialOrd for MidiEvent {
 
 impl Ord for MidiEvent {
     fn cmp(&self, other: &Self) -> Ordering {
-        // Primary: sort by tick
-        match self.tick.cmp(&other.tick) {
-            Ordering::Equal => {}
-            ord => return ord,
-        }
-
-        // Secondary: Note offs before note ons at same tick
-        let self_priority = event_priority(&self.message);
-        let other_priority = event_priority(&other.message);
-        match self_priority.cmp(&other_priority) {
-            Ordering::Equal => {}
-            ord => return ord,
-        }
-
-        // Tertiary: by sequence number for stability
-        self.seq.cmp(&other.seq)
+        compare_events(self, other, NoteSortOrder::NoteOnsBeforeOffs)
     }
 }
 
-/// Get sorting priority for event types
-fn event_priority(msg: &MidiMessage) -> i32 {
-    match msg {
-        // Meta events first (tempo changes affect timing)
-        MidiMessage::Meta(_) => 0,
-        // Note offs before note ons
-        MidiMessage::NoteOff { .. } => 1,
-        MidiMessage::NoteOn { velocity: 0, .. } => 1,
-        // Then program changes
-        MidiMessage::ProgramChange { .. } => 2,
-        // Then control changes
-        MidiMessage::ControlChange { .. } => 3,
-        // Then note ons
-        MidiMessage::NoteOn { .. } => 4,
-        // Everything else
-        _ => 5,
+/// Controls whether note-on or note-off events sort first when they share a
+/// tick and no explicit sequence number breaks the tie. Mirrors upstream
+/// midifile's `sortTrackNoteOnsBeforeOffs`/`sortTrackNoteOffsBeforeOns`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NoteSortOrder {
+    /// Note-on before note-off at the same tick (upstream's default).
+    #[default]
+    NoteOnsBeforeOffs,
+    /// Note-off before note-on at the same tick.
+    NoteOffsBeforeOns,
+}
+
+/// Compare two events for sorting under an explicit note-on/off tie-break
+/// order, matching upstream midifile's default comparator
+/// (`eventCompareNoteOnsBeforeOffs` / `eventCompareNoteOffsBeforeOns`):
+/// end-of-track meta events always sort last; other meta events, then
+/// non-note channel/system messages, then notes (ordered per `order`).
+/// If both events carry an explicit nonzero sequence number (e.g. assigned by
+/// `MidiTrack::mark_sequence`, which happens automatically right after
+/// reading a file), that original file order takes precedence over the
+/// type-based rules above, matching upstream's `seq`-aware comparator.
+pub fn compare_events(a: &MidiEvent, b: &MidiEvent, order: NoteSortOrder) -> Ordering {
+    match a.tick.cmp(&b.tick) {
+        Ordering::Equal => {}
+        ord => return ord,
     }
+
+    if a.seq != 0 && b.seq != 0 {
+        return a.seq.cmp(&b.seq);
+    }
+
+    let priority = match order {
+        NoteSortOrder::NoteOnsBeforeOffs => event_priority,
+        NoteSortOrder::NoteOffsBeforeOns => event_priority_note_offs_before_ons,
+    };
+    match priority(&a.message).cmp(&priority(&b.message)) {
+        Ordering::Equal => {}
+        ord => return ord,
+    }
+
+    a.seq.cmp(&b.seq)
+}
+
+/// Sorting priority for event types with note-ons before note-offs (default).
+fn event_priority(msg: &MidiMessage) -> i32 {
+    if let MidiMessage::Meta(meta) = msg {
+        return if matches!(meta, MetaEvent::EndOfTrack) { i32::MAX } else { 0 };
+    }
+    if msg.is_note_on() {
+        return 2;
+    }
+    if msg.is_note_off() {
+        return 3;
+    }
+    // Non-note channel messages (control change, program change, pitch bend,
+    // pressure) and system messages sort before both note-ons and note-offs.
+    1
+}
+
+/// Sorting priority for event types with note-offs before note-ons.
+fn event_priority_note_offs_before_ons(msg: &MidiMessage) -> i32 {
+    if let MidiMessage::Meta(meta) = msg {
+        return if matches!(meta, MetaEvent::EndOfTrack) { i32::MAX } else { 0 };
+    }
+    if msg.is_note_off() {
+        return 2;
+    }
+    if msg.is_note_on() {
+        return 3;
+    }
+    1
 }
 
 /// Builder for creating MIDI events
@@ -333,8 +378,8 @@ mod tests {
     #[test]
     fn test_event_ordering() {
         let mut events = vec![
-            MidiEvent::note_on(100, 0, 60, 100),
             MidiEvent::note_off(100, 0, 60, 0),
+            MidiEvent::note_on(100, 0, 60, 100),
             MidiEvent::note_on(0, 0, 60, 100),
         ];
 
@@ -342,9 +387,50 @@ mod tests {
 
         // First event should be note on at tick 0
         assert_eq!(events[0].tick(), 0);
-        // At tick 100, note off should come before note on
-        assert!(events[1].is_note_off());
-        assert!(events[2].is_note_on());
+        // At tick 100, note on comes before note off by default, matching
+        // upstream midifile's `eventCompareNoteOnsBeforeOffs`.
+        assert!(events[1].is_note_on());
+        assert!(events[2].is_note_off());
+    }
+
+    #[test]
+    fn test_event_ordering_control_change_before_notes() {
+        // Non-note channel messages (CC/PC/pitch-bend/pressure) sort before
+        // both note-ons and note-offs at the same tick.
+        let mut events = vec![
+            MidiEvent::note_on(0, 0, 60, 100),
+            MidiEvent::control_change(0, 0, 64, 127),
+        ];
+        events.sort();
+        assert!(matches!(events[0].message(), MidiMessage::ControlChange { .. }));
+        assert!(events[1].is_note_on());
+    }
+
+    #[test]
+    fn test_event_ordering_end_of_track_always_last() {
+        let mut events = vec![
+            MidiEvent::new(10, MidiMessage::Meta(MetaEvent::EndOfTrack)),
+            MidiEvent::new(10, MidiMessage::Meta(MetaEvent::Marker("x".into()))),
+            MidiEvent::note_on(10, 0, 60, 100),
+        ];
+        events.sort();
+        assert!(matches!(events[2].message(), MidiMessage::Meta(MetaEvent::EndOfTrack)));
+    }
+
+    #[test]
+    fn test_event_ordering_seq_overrides_type_priority() {
+        // With explicit nonzero sequence numbers (as assigned by
+        // MidiTrack::mark_sequence), original file order wins over
+        // type-based tie-breaking, even across different message types.
+        let mut note_on = MidiEvent::note_on(0, 0, 60, 100);
+        let mut cc = MidiEvent::control_change(0, 0, 64, 127);
+        note_on.set_seq(1);
+        cc.set_seq(2);
+
+        let mut events = vec![cc.clone(), note_on.clone()];
+        events.sort();
+        assert!(events[0].is_note_on());
+        assert!(matches!(events[1].message(), MidiMessage::ControlChange { .. }));
     }
 
     #[test]

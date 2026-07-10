@@ -2,6 +2,9 @@
 
 use std::fmt;
 
+use crate::core::Fraction;
+use crate::notation::{Spanner, SpannerAnchor};
+
 /// Dynamic level type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum DynamicsType {
@@ -37,6 +40,11 @@ pub enum DynamicsType {
     RF,
     /// Rinforzando forte
     RFZ,
+    /// Fortepiano (loud, then immediately soft)
+    FP,
+    /// Niente ("nothing" — silence; used at the start/end of a hairpin to
+    /// mean fading from/to inaudibility)
+    N,
 }
 
 impl DynamicsType {
@@ -59,6 +67,8 @@ impl DynamicsType {
             DynamicsType::FZ => "fz",
             DynamicsType::RF => "rf",
             DynamicsType::RFZ => "rfz",
+            DynamicsType::FP => "fp",
+            DynamicsType::N => "n",
         }
     }
 
@@ -81,6 +91,31 @@ impl DynamicsType {
             DynamicsType::FZ => "forzando",
             DynamicsType::RF => "rinforzando",
             DynamicsType::RFZ => "rinforzato",
+            DynamicsType::FP => "fortepiano",
+            DynamicsType::N => "niente",
+        }
+    }
+
+    /// Get the English-language description (mirrors music21's
+    /// English-name dynamic table).
+    pub fn english(&self) -> &'static str {
+        match self {
+            DynamicsType::PPPP => "as soft as possible",
+            DynamicsType::PPP => "very very soft",
+            DynamicsType::PP => "very soft",
+            DynamicsType::P => "soft",
+            DynamicsType::MP => "moderately soft",
+            DynamicsType::MF => "moderately loud",
+            DynamicsType::F => "loud",
+            DynamicsType::FF => "very loud",
+            DynamicsType::FFF => "very very loud",
+            DynamicsType::FFFF => "as loud as possible",
+            DynamicsType::SF | DynamicsType::SFZ => "sudden accent",
+            DynamicsType::SFP => "sudden accent, then soft",
+            DynamicsType::FZ => "forced accent",
+            DynamicsType::RF | DynamicsType::RFZ => "reinforced accent",
+            DynamicsType::FP => "loud, then immediately soft",
+            DynamicsType::N => "nothing (silence)",
         }
     }
 
@@ -100,6 +135,8 @@ impl DynamicsType {
             DynamicsType::SF | DynamicsType::SFZ | DynamicsType::FZ | DynamicsType::RFZ => 112,
             DynamicsType::SFP => 96,
             DynamicsType::RF => 100,
+            DynamicsType::FP => 96,
+            DynamicsType::N => 0,
         }
     }
 
@@ -118,8 +155,37 @@ impl DynamicsType {
                 | DynamicsType::FZ
                 | DynamicsType::RF
                 | DynamicsType::RFZ
+                | DynamicsType::FP
         )
     }
+}
+
+/// Map a 0.0-1.0 volume scalar to the name of the nearest standard
+/// dynamic level (`"pppp"` through `"ffff"`), by closest MIDI-velocity
+/// match. Mirrors music21's `dynamicStrFromDecimal`.
+pub fn dynamic_str_from_decimal(decimal: f64) -> &'static str {
+    const LEVELS: [DynamicsType; 10] = [
+        DynamicsType::PPPP,
+        DynamicsType::PPP,
+        DynamicsType::PP,
+        DynamicsType::P,
+        DynamicsType::MP,
+        DynamicsType::MF,
+        DynamicsType::F,
+        DynamicsType::FF,
+        DynamicsType::FFF,
+        DynamicsType::FFFF,
+    ];
+    let clamped = decimal.clamp(0.0, 1.0);
+    LEVELS
+        .iter()
+        .min_by(|a, b| {
+            let da = (a.volume() - clamped).abs();
+            let db = (b.volume() - clamped).abs();
+            da.partial_cmp(&db).unwrap()
+        })
+        .map(|d| d.text())
+        .unwrap_or("mf")
 }
 
 impl fmt::Display for DynamicsType {
@@ -135,6 +201,9 @@ pub struct Dynamics {
     type_: DynamicsType,
     /// Custom velocity override
     velocity_override: Option<u8>,
+    /// A custom display string (e.g. "poco f"), overriding `type_`'s own
+    /// text — for markings that don't fit the standard vocabulary.
+    custom_text: Option<String>,
 }
 
 impl Dynamics {
@@ -143,7 +212,33 @@ impl Dynamics {
         Self {
             type_,
             velocity_override: None,
+            custom_text: None,
         }
+    }
+
+    /// Create a dynamic marking with an arbitrary display string (e.g.
+    /// "poco f") and an explicit velocity, for markings that don't fit
+    /// the standard vocabulary.
+    pub fn custom(text: impl Into<String>, velocity: u8) -> Self {
+        Self {
+            type_: DynamicsType::MF,
+            velocity_override: Some(velocity),
+            custom_text: Some(text.into()),
+        }
+    }
+
+    /// Whether this marking has a custom display string rather than one
+    /// of the standard `DynamicsType` labels.
+    pub fn is_custom(&self) -> bool {
+        self.custom_text.is_some()
+    }
+
+    /// This marking's display text: the custom string if set, otherwise
+    /// `type_()`'s standard text (e.g. `"mf"`).
+    pub fn text(&self) -> String {
+        self.custom_text
+            .clone()
+            .unwrap_or_else(|| self.type_.text().to_string())
     }
 
     /// Create piano
@@ -205,7 +300,7 @@ impl Default for Dynamics {
 
 impl fmt::Display for Dynamics {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.type_)
+        write!(f, "{}", self.text())
     }
 }
 
@@ -215,92 +310,140 @@ impl From<DynamicsType> for Dynamics {
     }
 }
 
-/// Hairpin type
+/// Dynamic wedge (hairpin) direction
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum HairpinType {
+pub enum DynamicWedgeType {
     /// Crescendo (getting louder)
     Crescendo,
     /// Decrescendo / Diminuendo (getting softer)
     Decrescendo,
 }
 
-impl HairpinType {
+impl DynamicWedgeType {
     /// Get the text representation
     pub fn text(&self) -> &'static str {
         match self {
-            HairpinType::Crescendo => "cresc.",
-            HairpinType::Decrescendo => "decresc.",
+            DynamicWedgeType::Crescendo => "cresc.",
+            DynamicWedgeType::Decrescendo => "decresc.",
         }
     }
 }
 
-impl fmt::Display for HairpinType {
+impl fmt::Display for DynamicWedgeType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.text())
     }
 }
 
-/// A hairpin (crescendo/decrescendo)
+/// A dynamics hairpin (crescendo/decrescendo), anchored to a range of the
+/// music via `Spanner` rather than floating free of any position —
+/// unlike the marking alone, this lets you ask "does this wedge cover
+/// offset X in measure Y" (`contains`) or interpolate an in-between
+/// target velocity (`velocity_at`).
 #[derive(Debug, Clone, PartialEq)]
-pub struct Hairpin {
-    /// Hairpin type
-    type_: HairpinType,
-    /// Start dynamic (optional)
+pub struct DynamicWedge {
+    spanner: Spanner,
+    wedge_type: DynamicWedgeType,
     start_dynamic: Option<Dynamics>,
-    /// End dynamic (optional)
     end_dynamic: Option<Dynamics>,
 }
 
-impl Hairpin {
-    /// Create a new hairpin
-    pub fn new(type_: HairpinType) -> Self {
+impl DynamicWedge {
+    /// Create a new dynamic wedge spanning `start` to `end`.
+    pub fn new(wedge_type: DynamicWedgeType, start: SpannerAnchor, end: SpannerAnchor) -> Self {
         Self {
-            type_,
+            spanner: Spanner::with_label(start, end, wedge_type.to_string()),
+            wedge_type,
             start_dynamic: None,
             end_dynamic: None,
         }
     }
 
-    /// Create a crescendo
-    pub fn crescendo() -> Self {
-        Self::new(HairpinType::Crescendo)
+    /// Create a crescendo spanning `start` to `end`.
+    pub fn crescendo(start: SpannerAnchor, end: SpannerAnchor) -> Self {
+        Self::new(DynamicWedgeType::Crescendo, start, end)
     }
 
-    /// Create a decrescendo
-    pub fn decrescendo() -> Self {
-        Self::new(HairpinType::Decrescendo)
+    /// Create a decrescendo/diminuendo spanning `start` to `end`.
+    pub fn diminuendo(start: SpannerAnchor, end: SpannerAnchor) -> Self {
+        Self::new(DynamicWedgeType::Decrescendo, start, end)
     }
 
-    /// Get the type
-    pub fn type_(&self) -> HairpinType {
-        self.type_
+    /// Get the wedge direction
+    pub fn wedge_type(&self) -> DynamicWedgeType {
+        self.wedge_type
+    }
+
+    /// The underlying spanner (start/end anchors).
+    pub fn spanner(&self) -> &Spanner {
+        &self.spanner
     }
 
     /// Set start dynamic
-    pub fn set_start(&mut self, dynamic: Dynamics) {
+    pub fn set_start_dynamic(&mut self, dynamic: Dynamics) {
         self.start_dynamic = Some(dynamic);
     }
 
     /// Set end dynamic
-    pub fn set_end(&mut self, dynamic: Dynamics) {
+    pub fn set_end_dynamic(&mut self, dynamic: Dynamics) {
         self.end_dynamic = Some(dynamic);
     }
 
     /// Get start dynamic
-    pub fn start(&self) -> Option<&Dynamics> {
+    pub fn start_dynamic(&self) -> Option<&Dynamics> {
         self.start_dynamic.as_ref()
     }
 
     /// Get end dynamic
-    pub fn end(&self) -> Option<&Dynamics> {
+    pub fn end_dynamic(&self) -> Option<&Dynamics> {
         self.end_dynamic.as_ref()
+    }
+
+    /// Whether `pos` falls within this wedge's span.
+    pub fn contains(&self, pos: SpannerAnchor) -> bool {
+        self.spanner.contains(pos)
+    }
+
+    /// The target MIDI velocity at `pos`, linearly interpolated between
+    /// `start_dynamic` and `end_dynamic`'s velocities. Returns `None` if
+    /// `pos` isn't within the wedge's span, if neither endpoint dynamic
+    /// is set, or if the wedge spans more than one measure (interpolating
+    /// across measures would need real elapsed-time context this
+    /// notation-only type doesn't track — only the single-measure case,
+    /// by far the common one for a hairpin, is supported).
+    pub fn velocity_at(&self, pos: SpannerAnchor) -> Option<u8> {
+        if !self.contains(pos) {
+            return None;
+        }
+        match (self.start_dynamic.as_ref(), self.end_dynamic.as_ref()) {
+            (Some(s), None) => Some(s.velocity()),
+            (None, Some(e)) => Some(e.velocity()),
+            (None, None) => None,
+            (Some(s), Some(e)) => {
+                if !self.spanner.is_single_measure() {
+                    return None;
+                }
+                let start_offset = fraction_to_f64(self.spanner.start().offset);
+                let end_offset = fraction_to_f64(self.spanner.end().offset);
+                let pos_offset = fraction_to_f64(pos.offset);
+                if end_offset <= start_offset {
+                    return Some(s.velocity());
+                }
+                let t = ((pos_offset - start_offset) / (end_offset - start_offset)).clamp(0.0, 1.0);
+                Some((s.velocity() as f64 + (e.velocity() as f64 - s.velocity() as f64) * t).round() as u8)
+            }
+        }
     }
 }
 
-impl fmt::Display for Hairpin {
+impl fmt::Display for DynamicWedge {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.type_)
+        write!(f, "{}", self.wedge_type)
     }
+}
+
+fn fraction_to_f64(f: Fraction) -> f64 {
+    *f.numer() as f64 / *f.denom() as f64
 }
 
 #[cfg(test)]
@@ -330,13 +473,89 @@ mod tests {
     }
 
     #[test]
-    fn test_hairpin() {
-        let mut cresc = Hairpin::crescendo();
-        cresc.set_start(Dynamics::p());
-        cresc.set_end(Dynamics::f());
+    fn test_dynamic_wedge_creation_and_span() {
+        let start = SpannerAnchor::new(1, Fraction::new(0, 1));
+        let end = SpannerAnchor::new(1, Fraction::new(4, 1));
+        let mut cresc = DynamicWedge::crescendo(start, end);
+        cresc.set_start_dynamic(Dynamics::p());
+        cresc.set_end_dynamic(Dynamics::f());
 
-        assert_eq!(cresc.type_(), HairpinType::Crescendo);
-        assert!(cresc.start().is_some());
-        assert!(cresc.end().is_some());
+        assert_eq!(cresc.wedge_type(), DynamicWedgeType::Crescendo);
+        assert!(cresc.start_dynamic().is_some());
+        assert!(cresc.end_dynamic().is_some());
+        assert!(cresc.contains(SpannerAnchor::new(1, Fraction::new(2, 1))));
+        assert!(!cresc.contains(SpannerAnchor::new(2, Fraction::new(0, 1))));
+    }
+
+    #[test]
+    fn test_dynamic_wedge_velocity_interpolation() {
+        // Regression: a Hairpin used to carry no notion of which notes it
+        // spans, so there was no way to ask "what's the target velocity
+        // partway through this crescendo" — DynamicWedge's Spanner
+        // anchoring makes that answerable.
+        let start = SpannerAnchor::new(1, Fraction::new(0, 1));
+        let end = SpannerAnchor::new(1, Fraction::new(4, 1));
+        let mut cresc = DynamicWedge::crescendo(start, end);
+        cresc.set_start_dynamic(Dynamics::p());
+        cresc.set_end_dynamic(Dynamics::f());
+
+        let at_start = cresc.velocity_at(start).unwrap();
+        let at_end = cresc.velocity_at(end).unwrap();
+        let at_middle = cresc
+            .velocity_at(SpannerAnchor::new(1, Fraction::new(2, 1)))
+            .unwrap();
+
+        assert_eq!(at_start, Dynamics::p().velocity());
+        assert_eq!(at_end, Dynamics::f().velocity());
+        assert!(at_middle > at_start && at_middle < at_end);
+    }
+
+    #[test]
+    fn test_dynamic_wedge_cross_measure_velocity_at_is_none() {
+        let start = SpannerAnchor::new(1, Fraction::new(0, 1));
+        let end = SpannerAnchor::new(3, Fraction::new(0, 1));
+        let mut cresc = DynamicWedge::crescendo(start, end);
+        cresc.set_start_dynamic(Dynamics::p());
+        cresc.set_end_dynamic(Dynamics::f());
+
+        assert_eq!(
+            cresc.velocity_at(SpannerAnchor::new(2, Fraction::new(0, 1))),
+            None
+        );
+    }
+
+    #[test]
+    fn test_dynamics_custom_text() {
+        let poco_f = Dynamics::custom("poco f", 90);
+        assert!(poco_f.is_custom());
+        assert_eq!(poco_f.text(), "poco f");
+        assert_eq!(poco_f.velocity(), 90);
+        assert_eq!(poco_f.to_string(), "poco f");
+
+        assert!(!Dynamics::f().is_custom());
+    }
+
+    #[test]
+    fn test_fp_and_niente_markings() {
+        assert_eq!(DynamicsType::FP.text(), "fp");
+        assert_eq!(DynamicsType::FP.name(), "fortepiano");
+        assert!(DynamicsType::FP.is_accent());
+
+        assert_eq!(DynamicsType::N.text(), "n");
+        assert_eq!(DynamicsType::N.velocity(), 0);
+    }
+
+    #[test]
+    fn test_english_names() {
+        assert_eq!(DynamicsType::PP.english(), "very soft");
+        assert_eq!(DynamicsType::F.english(), "loud");
+        assert_eq!(DynamicsType::MP.english(), "moderately soft");
+    }
+
+    #[test]
+    fn test_dynamic_str_from_decimal() {
+        assert_eq!(dynamic_str_from_decimal(0.0), "pppp");
+        assert_eq!(dynamic_str_from_decimal(1.0), "ffff");
+        assert_eq!(dynamic_str_from_decimal(DynamicsType::MF.volume()), "mf");
     }
 }

@@ -124,6 +124,46 @@ impl MidiMessage {
         Self::pitch_bend(channel, unsigned)
     }
 
+    /// Create a sustain pedal (CC 64) message with an explicit value
+    pub fn make_sustain(channel: u8, value: u8) -> Self {
+        Self::control_change(channel, 64, value)
+    }
+
+    /// Create a sustain pedal on message (CC 64, value 127)
+    pub fn make_sustain_on(channel: u8) -> Self {
+        Self::make_sustain(channel, 127)
+    }
+
+    /// Create a sustain pedal off message (CC 64, value 0)
+    pub fn make_sustain_off(channel: u8) -> Self {
+        Self::make_sustain(channel, 0)
+    }
+
+    /// Create a soft pedal (CC 67) message with an explicit value
+    pub fn make_soft(channel: u8, value: u8) -> Self {
+        Self::control_change(channel, 67, value)
+    }
+
+    /// Create a soft pedal on message (CC 67, value 127)
+    pub fn make_soft_on(channel: u8) -> Self {
+        Self::make_soft(channel, 127)
+    }
+
+    /// Create a soft pedal off message (CC 67, value 0)
+    pub fn make_soft_off(channel: u8) -> Self {
+        Self::make_soft(channel, 0)
+    }
+
+    /// Create a patch (program) change message. Alias of `program_change`.
+    pub fn make_patch_change(channel: u8, program: u8) -> Self {
+        Self::program_change(channel, program)
+    }
+
+    /// Create a timbre change message. Alias of `program_change`.
+    pub fn make_timbre(channel: u8, program: u8) -> Self {
+        Self::program_change(channel, program)
+    }
+
     /// Get the channel for channel messages
     pub fn channel(&self) -> Option<u8> {
         match self {
@@ -177,6 +217,91 @@ impl MidiMessage {
     /// Check if this is a meta event
     pub fn is_meta(&self) -> bool {
         matches!(self, MidiMessage::Meta(_))
+    }
+
+    /// Check if this is a note on or note off message (velocity-0 note-on
+    /// counts as a note off, per `is_note_off`).
+    pub fn is_note(&self) -> bool {
+        matches!(self, MidiMessage::NoteOn { .. } | MidiMessage::NoteOff { .. })
+    }
+
+    /// Check if this is a control change message
+    pub fn is_controller(&self) -> bool {
+        matches!(self, MidiMessage::ControlChange { .. })
+    }
+
+    /// Get the controller number for a control change message
+    pub fn get_controller_number(&self) -> Option<u8> {
+        match self {
+            MidiMessage::ControlChange { controller, .. } => Some(*controller),
+            _ => None,
+        }
+    }
+
+    /// Get the controller value for a control change message
+    pub fn get_controller_value(&self) -> Option<u8> {
+        match self {
+            MidiMessage::ControlChange { value, .. } => Some(*value),
+            _ => None,
+        }
+    }
+
+    /// Check if this is a sustain pedal (CC 64) message
+    pub fn is_sustain(&self) -> bool {
+        self.get_controller_number() == Some(64)
+    }
+
+    /// Check if this is a sustain-on message (CC 64, value >= 64)
+    pub fn is_sustain_on(&self) -> bool {
+        self.is_sustain() && self.get_controller_value().unwrap_or(0) >= 64
+    }
+
+    /// Check if this is a sustain-off message (CC 64, value < 64)
+    pub fn is_sustain_off(&self) -> bool {
+        self.is_sustain() && self.get_controller_value().unwrap_or(0) < 64
+    }
+
+    /// Check if this is a soft pedal (CC 67) message
+    pub fn is_soft(&self) -> bool {
+        self.get_controller_number() == Some(67)
+    }
+
+    /// Check if this is a soft-pedal-on message (CC 67, value >= 64)
+    pub fn is_soft_on(&self) -> bool {
+        self.is_soft() && self.get_controller_value().unwrap_or(0) >= 64
+    }
+
+    /// Check if this is a soft-pedal-off message (CC 67, value < 64)
+    pub fn is_soft_off(&self) -> bool {
+        self.is_soft() && self.get_controller_value().unwrap_or(0) < 64
+    }
+
+    /// Check if this is a program change (patch change) message
+    pub fn is_patch_change(&self) -> bool {
+        matches!(self, MidiMessage::ProgramChange { .. })
+    }
+
+    /// Check if this is a program change message. Alias of `is_patch_change`.
+    pub fn is_timbre(&self) -> bool {
+        self.is_patch_change()
+    }
+
+    /// Check if this is a note or channel pressure (aftertouch) message
+    pub fn is_pressure(&self) -> bool {
+        matches!(
+            self,
+            MidiMessage::PolyPressure { .. } | MidiMessage::ChannelPressure { .. }
+        )
+    }
+
+    /// Check if this is a pressure (aftertouch) message. Alias of `is_pressure`.
+    pub fn is_aftertouch(&self) -> bool {
+        self.is_pressure()
+    }
+
+    /// Check if this is a pitch bend message
+    pub fn is_pitchbend(&self) -> bool {
+        matches!(self, MidiMessage::PitchBend { .. })
     }
 
     /// Get the status byte for this message
@@ -356,6 +481,12 @@ impl MidiMessage {
     }
 }
 
+/// Convert a frequency in Hz to a MIDI-style semitone number (A4 = 440Hz = 69.0).
+/// Fractional results represent microtonal offsets from the nearest semitone.
+pub fn frequency_to_semitones(frequency_hz: f64) -> f64 {
+    69.0 + 12.0 * (frequency_hz / 440.0).log2()
+}
+
 impl fmt::Display for MidiMessage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -465,6 +596,31 @@ impl MetaEvent {
         }
     }
 
+    /// Get the raw microseconds-per-quarter-note value from a tempo meta event
+    pub fn tempo_microseconds(&self) -> Option<u32> {
+        match self {
+            MetaEvent::Tempo(us) => Some(*us),
+            _ => None,
+        }
+    }
+
+    /// Get the duration of one quarter note, in seconds, from a tempo meta event
+    pub fn tempo_seconds(&self) -> Option<f64> {
+        self.tempo_microseconds().map(|us| us as f64 / 1_000_000.0)
+    }
+
+    /// Get ticks-per-second implied by this tempo, given a file's ticks-per-quarter
+    pub fn tempo_ticks_per_second(&self, ticks_per_quarter: u16) -> Option<f64> {
+        self.tempo_seconds()
+            .map(|spq| ticks_per_quarter as f64 / spq)
+    }
+
+    /// Get seconds-per-tick implied by this tempo, given a file's ticks-per-quarter
+    pub fn tempo_seconds_per_tick(&self, ticks_per_quarter: u16) -> Option<f64> {
+        self.tempo_seconds()
+            .map(|spq| spq / ticks_per_quarter as f64)
+    }
+
     /// Create a time signature meta event
     pub fn time_signature(numerator: u8, denominator: u8) -> Self {
         // Convert denominator to power of 2
@@ -473,6 +629,19 @@ impl MetaEvent {
             numerator,
             denominator_power,
             clocks_per_click: 24,
+            notated_32nd_per_quarter: 8,
+        }
+    }
+
+    /// Create a time signature meta event for compound meters (e.g. 6/8),
+    /// using a default of 36 MIDI clocks per metronome click (vs. 24 for
+    /// `time_signature`), matching upstream midifile's `addCompoundTimeSignature`.
+    pub fn compound_time_signature(numerator: u8, denominator: u8) -> Self {
+        let denominator_power = (denominator as f64).log2() as u8;
+        MetaEvent::TimeSignature {
+            numerator,
+            denominator_power,
+            clocks_per_click: 36,
             notated_32nd_per_quarter: 8,
         }
     }
@@ -757,6 +926,49 @@ mod tests {
 
         let ts = MetaEvent::time_signature(6, 8);
         assert_eq!(ts.time_signature_denominator(), Some(8));
+    }
+
+    #[test]
+    fn test_controller_classification_and_constructors() {
+        let sustain_on = MidiMessage::make_sustain_on(0);
+        assert!(sustain_on.is_controller());
+        assert!(sustain_on.is_sustain());
+        assert!(sustain_on.is_sustain_on());
+        assert!(!sustain_on.is_sustain_off());
+        assert_eq!(sustain_on.get_controller_number(), Some(64));
+
+        let sustain_off = MidiMessage::make_sustain_off(0);
+        assert!(sustain_off.is_sustain_off());
+        assert!(!sustain_off.is_sustain_on());
+
+        let soft_on = MidiMessage::make_soft_on(1);
+        assert!(soft_on.is_soft());
+        assert!(soft_on.is_soft_on());
+
+        let patch = MidiMessage::make_patch_change(0, 40);
+        assert!(patch.is_patch_change());
+        assert!(patch.is_timbre());
+
+        assert!(MidiMessage::note_on(0, 60, 100).is_note());
+        assert!(MidiMessage::note_off(0, 60, 0).is_note());
+        assert!(MidiMessage::pitch_bend(0, 0x2000).is_pitchbend());
+    }
+
+    #[test]
+    fn test_tempo_primitives() {
+        let tempo = MetaEvent::tempo_from_bpm(120.0);
+        assert_eq!(tempo.tempo_microseconds(), Some(500_000));
+        assert!((tempo.tempo_seconds().unwrap() - 0.5).abs() < 1e-9);
+        // At 480 ticks/quarter and 120bpm, 1 quarter (0.5s) = 480 ticks.
+        assert!((tempo.tempo_ticks_per_second(480).unwrap() - 960.0).abs() < 1e-6);
+        assert!((tempo.tempo_seconds_per_tick(480).unwrap() - 0.5 / 480.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_frequency_to_semitones() {
+        assert!((frequency_to_semitones(440.0) - 69.0).abs() < 1e-9);
+        // One octave up from A4 is A5 (81 semitones from C-1... i.e. +12).
+        assert!((frequency_to_semitones(880.0) - 81.0).abs() < 1e-9);
     }
 
     #[test]

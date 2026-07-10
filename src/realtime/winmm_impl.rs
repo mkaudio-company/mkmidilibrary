@@ -53,6 +53,20 @@ impl WinMmMidiInput {
 
     /// Set message type filtering
     pub fn ignore_types(&mut self, _sysex: bool, _timing: bool, _active_sensing: bool) {}
+
+    /// Set the maximum number of queued messages before incoming messages
+    /// are dropped.
+    pub fn set_queue_size_limit(&mut self, _limit: usize) {}
+
+    /// Register a callback for non-fatal warnings.
+    pub fn set_error_callback<F>(&mut self, _callback: F)
+    where
+        F: FnMut(&RtMidiError) + Send + 'static,
+    {
+    }
+
+    /// Remove any registered error callback.
+    pub fn cancel_error_callback(&mut self) {}
 }
 
 /// Windows MM MIDI output handler

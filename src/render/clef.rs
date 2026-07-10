@@ -51,6 +51,7 @@ impl ClefElement {
             ClefSign::C => STAFF_SPACE * 2.5 * self.scale,
             ClefSign::Percussion => STAFF_SPACE * 2.0 * self.scale,
             ClefSign::Tab => STAFF_SPACE * 2.5 * self.scale,
+            ClefSign::None | ClefSign::Jianpu => 0.0,
         }
     }
 
@@ -68,6 +69,8 @@ impl ClefElement {
             ClefSign::C => self.draw_c_clef(canvas),
             ClefSign::Percussion => self.draw_percussion_clef(canvas),
             ClefSign::Tab => self.draw_tab_clef(canvas),
+            // Neither "no clef" nor Jianpu draws a traditional clef glyph.
+            ClefSign::None | ClefSign::Jianpu => {}
         }
 
         // Draw octave marker if present
