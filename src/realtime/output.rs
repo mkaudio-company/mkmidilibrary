@@ -352,56 +352,81 @@ impl MidiOutput {
         }
     }
 
+    // ALSA implementations. `AlsaMidiOutput` itself is currently a stub
+    // (see its own doc comment) — real sequencer I/O needs a Linux
+    // environment to write and verify against actual hardware/drivers —
+    // but the wiring here (constructing it, storing it in `self.platform`,
+    // and reading it back on close/send) matches the CoreMIDI pattern
+    // exactly, so filling in that stub later doesn't need any dispatch
+    // changes.
     #[cfg(target_os = "linux")]
     fn get_ports_alsa(&self) -> Vec<MidiPort> {
-        // TODO: Implement ALSA port enumeration
-        vec![]
+        super::alsa_impl::get_output_ports()
     }
 
     #[cfg(target_os = "linux")]
-    fn open_port_alsa(&mut self, _port: usize, _name: &str) -> Result<(), RtMidiError> {
-        // TODO: Implement ALSA port opening
+    fn open_port_alsa(&mut self, port: usize, name: &str) -> Result<(), RtMidiError> {
+        let mut platform = super::alsa_impl::AlsaMidiOutput::new(&self.client_name)?;
+        platform.open_port(port, name)?;
+        self.platform = Some(platform);
         Ok(())
     }
 
     #[cfg(target_os = "linux")]
-    fn open_virtual_port_alsa(&mut self, _name: &str) -> Result<(), RtMidiError> {
-        // TODO: Implement ALSA virtual port
+    fn open_virtual_port_alsa(&mut self, name: &str) -> Result<(), RtMidiError> {
+        let mut platform = super::alsa_impl::AlsaMidiOutput::new(&self.client_name)?;
+        platform.open_virtual_port(name)?;
+        self.platform = Some(platform);
         Ok(())
     }
 
     #[cfg(target_os = "linux")]
     fn close_port_alsa(&mut self) {
-        // TODO: Implement ALSA port closing
+        if let Some(ref mut p) = self.platform {
+            p.close_port();
+        }
+        self.platform = None;
     }
 
     #[cfg(target_os = "linux")]
-    fn send_message_alsa(&mut self, _message: &[u8]) -> Result<(), RtMidiError> {
-        // TODO: Implement ALSA message sending
-        Ok(())
+    fn send_message_alsa(&mut self, message: &[u8]) -> Result<(), RtMidiError> {
+        if let Some(ref mut p) = self.platform {
+            p.send_message(message)
+        } else {
+            Err(RtMidiError::PortNotOpen)
+        }
     }
 
+    // Windows MM implementations — same relationship to `WinMmMidiOutput`
+    // as the ALSA ones above have to `AlsaMidiOutput`.
     #[cfg(target_os = "windows")]
     fn get_ports_winmm(&self) -> Vec<MidiPort> {
-        // TODO: Implement Windows MM port enumeration
-        vec![]
+        super::winmm_impl::get_output_ports()
     }
 
     #[cfg(target_os = "windows")]
-    fn open_port_winmm(&mut self, _port: usize, _name: &str) -> Result<(), RtMidiError> {
-        // TODO: Implement Windows MM port opening
+    fn open_port_winmm(&mut self, port: usize, name: &str) -> Result<(), RtMidiError> {
+        let mut platform = super::winmm_impl::WinMmMidiOutput::new(&self.client_name)?;
+        platform.open_port(port, name)?;
+        self.platform = Some(platform);
         Ok(())
     }
 
     #[cfg(target_os = "windows")]
     fn close_port_winmm(&mut self) {
-        // TODO: Implement Windows MM port closing
+        if let Some(ref mut p) = self.platform {
+            p.close_port();
+        }
+        self.platform = None;
     }
 
     #[cfg(target_os = "windows")]
-    fn send_message_winmm(&mut self, _message: &[u8]) -> Result<(), RtMidiError> {
-        // TODO: Implement Windows MM message sending
-        Ok(())
+    fn send_message_winmm(&mut self, message: &[u8]) -> Result<(), RtMidiError> {
+        if let Some(ref mut p) = self.platform {
+            p.send_message(message)
+        } else {
+            Err(RtMidiError::PortNotOpen)
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 //! ALSA implementation for Linux
 
-use super::port::{Api, MidiPort};
+use super::port::MidiPort;
 use super::RtMidiError;
 
 /// Get available MIDI input ports

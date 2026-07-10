@@ -533,44 +533,102 @@ impl MidiInput {
         self.platform = None;
     }
 
+    // ALSA implementations. `AlsaMidiInput` itself is currently a stub
+    // (see its own doc comment) — real sequencer I/O needs a Linux
+    // environment to write and verify against actual hardware/drivers —
+    // but the wiring here (constructing it, applying pending config/
+    // callbacks, storing it in `self.platform`) matches the CoreMIDI
+    // pattern exactly, so filling in that stub later doesn't need any
+    // dispatch changes.
     #[cfg(target_os = "linux")]
     fn get_ports_alsa(&self) -> Vec<MidiPort> {
-        // TODO: Implement ALSA port enumeration
-        vec![]
+        super::alsa_impl::get_input_ports()
     }
 
     #[cfg(target_os = "linux")]
-    fn open_port_alsa(&mut self, _port: usize, _name: &str) -> Result<(), RtMidiError> {
-        // TODO: Implement ALSA port opening
+    fn open_port_alsa(&mut self, port: usize, name: &str) -> Result<(), RtMidiError> {
+        let mut platform = super::alsa_impl::AlsaMidiInput::new(&self.client_name)?;
+        platform.open_port(port, name)?;
+        self.apply_pending_state_alsa(&mut platform);
+        self.platform = Some(platform);
         Ok(())
     }
 
     #[cfg(target_os = "linux")]
-    fn open_virtual_port_alsa(&mut self, _name: &str) -> Result<(), RtMidiError> {
-        // TODO: Implement ALSA virtual port
+    fn open_virtual_port_alsa(&mut self, name: &str) -> Result<(), RtMidiError> {
+        let mut platform = super::alsa_impl::AlsaMidiInput::new(&self.client_name)?;
+        platform.open_virtual_port(name)?;
+        self.apply_pending_state_alsa(&mut platform);
+        self.platform = Some(platform);
         Ok(())
+    }
+
+    /// Apply the currently configured filter settings and any callback set
+    /// before the port was opened to a freshly constructed platform backend.
+    #[cfg(target_os = "linux")]
+    fn apply_pending_state_alsa(&mut self, platform: &mut super::alsa_impl::AlsaMidiInput) {
+        platform.ignore_types(
+            self.config.ignore_sysex,
+            self.config.ignore_timing,
+            self.config.ignore_active_sensing,
+        );
+        platform.set_queue_size_limit(self.config.queue_size);
+        if let Some(callback) = self.pending_callback.take() {
+            platform.set_callback(callback);
+        }
+        if let Some(callback) = self.pending_error_callback.take() {
+            platform.set_error_callback(callback);
+        }
     }
 
     #[cfg(target_os = "linux")]
     fn close_port_alsa(&mut self) {
-        // TODO: Implement ALSA port closing
+        if let Some(ref mut p) = self.platform {
+            p.close_port();
+        }
+        self.platform = None;
     }
 
+    // Windows MM implementations — same relationship to `WinMmMidiInput`
+    // as the ALSA ones above have to `AlsaMidiInput`.
     #[cfg(target_os = "windows")]
     fn get_ports_winmm(&self) -> Vec<MidiPort> {
-        // TODO: Implement Windows MM port enumeration
-        vec![]
+        super::winmm_impl::get_input_ports()
     }
 
     #[cfg(target_os = "windows")]
-    fn open_port_winmm(&mut self, _port: usize, _name: &str) -> Result<(), RtMidiError> {
-        // TODO: Implement Windows MM port opening
+    fn open_port_winmm(&mut self, port: usize, name: &str) -> Result<(), RtMidiError> {
+        let mut platform = super::winmm_impl::WinMmMidiInput::new(&self.client_name)?;
+        platform.open_port(port, name)?;
+        self.apply_pending_state_winmm(&mut platform);
+        self.platform = Some(platform);
         Ok(())
+    }
+
+    /// Apply the currently configured filter settings and any callback set
+    /// before the port was opened to a freshly constructed platform backend.
+    #[cfg(target_os = "windows")]
+    fn apply_pending_state_winmm(&mut self, platform: &mut super::winmm_impl::WinMmMidiInput) {
+        platform.ignore_types(
+            self.config.ignore_sysex,
+            self.config.ignore_timing,
+            self.config.ignore_active_sensing,
+        );
+        platform.set_queue_size_limit(self.config.queue_size);
+        if let Some(callback) = self.pending_callback.take() {
+            platform.set_callback(callback);
+        }
+        if let Some(callback) = self.pending_error_callback.take() {
+            platform.set_error_callback(callback);
+        }
     }
 
     #[cfg(target_os = "windows")]
     fn close_port_winmm(&mut self) {
-        // TODO: Implement Windows MM port closing
+        if let Some(ref mut p) = self.platform {
+            p.close_port();
+        }
+        self.platform = None;
     }
 }
 
