@@ -20,7 +20,7 @@ jobs:
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y alsa-lib
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
 
       - name: Run tests
         run: cargo test --workspace
