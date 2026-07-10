@@ -259,7 +259,7 @@ impl Interval {
             _ => unreachable!(),
         };
 
-        let diff = simple_semitones as i32 - expected as i32;
+        let diff = simple_semitones - expected;
         let is_perfect_type = matches!(simple_generic, 0 | 3 | 4);
 
         match (is_perfect_type, diff) {
@@ -353,10 +353,7 @@ impl Interval {
 
     /// Check if this interval is consonant
     pub fn is_consonant(&self) -> bool {
-        match self.simple_semitones() {
-            0 | 3 | 4 | 5 | 7 | 8 | 9 | 12 => true,
-            _ => false,
-        }
+        matches!(self.simple_semitones(), 0 | 3 | 4 | 5 | 7 | 8 | 9 | 12)
     }
 
     /// Check if this interval is a perfect consonance
@@ -678,8 +675,8 @@ impl FromStr for Interval {
         }
 
         // Check for descending
-        let (negative, s) = if s.starts_with('-') {
-            (true, &s[1..])
+        let (negative, s) = if let Some(stripped) = s.strip_prefix('-') {
+            (true, stripped)
         } else {
             (false, s)
         };

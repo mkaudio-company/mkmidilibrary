@@ -445,11 +445,9 @@ impl MidiMessage {
             0xF0 => match status {
                 0xF0 => {
                     // SysEx - find end marker
-                    if let Some(end) = data.iter().position(|&b| b == 0xF7) {
-                        Some((MidiMessage::SysEx(data[1..end].to_vec()), end + 1))
-                    } else {
-                        None
-                    }
+                    data.iter()
+                        .position(|&b| b == 0xF7)
+                        .map(|end| (MidiMessage::SysEx(data[1..end].to_vec()), end + 1))
                 }
                 0xF1 if data.len() >= 2 => Some((MidiMessage::MtcQuarterFrame(data[1]), 2)),
                 0xF2 if data.len() >= 3 => Some((

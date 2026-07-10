@@ -302,65 +302,6 @@ fn event_priority_note_offs_before_ons(msg: &MidiMessage) -> i32 {
     1
 }
 
-/// Builder for creating MIDI events
-pub struct MidiEventBuilder {
-    tick: u64,
-    message: Option<MidiMessage>,
-    track: usize,
-    seq: u32,
-}
-
-impl MidiEventBuilder {
-    /// Create a new builder
-    pub fn new() -> Self {
-        Self {
-            tick: 0,
-            message: None,
-            track: 0,
-            seq: 0,
-        }
-    }
-
-    /// Set the tick time
-    pub fn tick(mut self, tick: u64) -> Self {
-        self.tick = tick;
-        self
-    }
-
-    /// Set the message
-    pub fn message(mut self, message: MidiMessage) -> Self {
-        self.message = Some(message);
-        self
-    }
-
-    /// Set the track
-    pub fn track(mut self, track: usize) -> Self {
-        self.track = track;
-        self
-    }
-
-    /// Set the sequence number
-    pub fn seq(mut self, seq: u32) -> Self {
-        self.seq = seq;
-        self
-    }
-
-    /// Build the event
-    pub fn build(self) -> Option<MidiEvent> {
-        self.message.map(|msg| {
-            let mut event = MidiEvent::with_track(self.tick, msg, self.track);
-            event.set_seq(self.seq);
-            event
-        })
-    }
-}
-
-impl Default for MidiEventBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -444,18 +385,4 @@ mod tests {
         assert_eq!(on.tick_duration(&events), Some(100));
     }
 
-    #[test]
-    fn test_event_builder() {
-        let event = MidiEventBuilder::new()
-            .tick(480)
-            .message(MidiMessage::note_on(0, 60, 80))
-            .track(1)
-            .seq(5)
-            .build()
-            .unwrap();
-
-        assert_eq!(event.tick(), 480);
-        assert_eq!(event.track(), 1);
-        assert_eq!(event.seq(), 5);
-    }
 }

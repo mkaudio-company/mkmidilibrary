@@ -139,9 +139,7 @@ impl MeasureElement {
                 bar_x - 6.0,
                 top_y,
                 bottom_y,
-                1.0,
-                3.0,
-                4.0,
+                (1.0, 3.0, 4.0),
                 &config.colors.bar_lines,
             );
         } else {
@@ -382,8 +380,7 @@ impl MeasureElement {
                 // Draw sharps
                 // Standard order: F C G D A E B
                 let positions: [i8; 7] = [4, 1, 5, 2, -1, 3, 0]; // Staff positions for sharps
-                for i in 0..(sharps as usize).min(7) {
-                    let pos = positions[i];
+                for (i, &pos) in positions.iter().enumerate().take((sharps as usize).min(7)) {
                     let sharp_x = x + (i as f32 * s * 0.8);
                     let sharp_y = self.staff_y - (pos as f32 * s / 2.0);
                     self.draw_sharp_symbol(canvas, sharp_x, sharp_y, colors);
@@ -393,8 +390,7 @@ impl MeasureElement {
                 // Standard order: B E A D G C F
                 let positions: [i8; 7] = [0, 3, -1, 2, -2, 1, -3]; // Staff positions for flats
                 let num_flats = (-sharps) as usize;
-                for i in 0..num_flats.min(7) {
-                    let pos = positions[i];
+                for (i, &pos) in positions.iter().enumerate().take(num_flats.min(7)) {
                     let flat_x = x + (i as f32 * s * 0.8);
                     let flat_y = self.staff_y - (pos as f32 * s / 2.0);
                     self.draw_flat_symbol(canvas, flat_x, flat_y, colors);

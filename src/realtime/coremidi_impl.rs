@@ -51,8 +51,11 @@ pub struct CoreMidiInput {
     callback_data: Arc<Mutex<CallbackData>>,
 }
 
+/// A registered message callback: `(delta_time_seconds, message_bytes)`.
+type MessageCallback = Box<dyn FnMut(f64, &[u8]) + Send>;
+
 struct CallbackData {
-    callback: Option<Box<dyn FnMut(f64, &[u8]) + Send>>,
+    callback: Option<MessageCallback>,
     /// Non-fatal warning/debug-warning reporting channel (see
     /// `RtMidiError::Warning`/`DebugWarning`), e.g. for dropped-message
     /// notifications when the polling queue is full.
@@ -166,9 +169,7 @@ impl CoreMidiInput {
 
     /// Open a MIDI input port
     pub fn open_port(&mut self, port_index: usize, port_name: &str) -> Result<(), RtMidiError> {
-        let source = Sources.into_iter().nth(port_index).ok_or_else(|| {
-            RtMidiError::InvalidPort(port_index)
-        })?;
+        let source = Sources.into_iter().nth(port_index).ok_or(RtMidiError::InvalidPort(port_index))?;
 
         let callback_data = Arc::clone(&self.callback_data);
         let input_port = self
@@ -343,9 +344,10 @@ impl CoreMidiOutput {
 
     /// Open a MIDI output port
     pub fn open_port(&mut self, port_index: usize, port_name: &str) -> Result<(), RtMidiError> {
-        let destination = Destinations.into_iter().nth(port_index).ok_or_else(|| {
-            RtMidiError::InvalidPort(port_index)
-        })?;
+        let destination = Destinations
+            .into_iter()
+            .nth(port_index)
+            .ok_or(RtMidiError::InvalidPort(port_index))?;
 
         let output_port = self
             .client

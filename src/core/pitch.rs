@@ -68,9 +68,13 @@ impl Step {
     pub fn prev(&self) -> Step {
         Step::from_index(self.index() - 1)
     }
+}
+
+impl FromStr for Step {
+    type Err = ParseError;
 
     /// Parse step from string
-    pub fn from_str(s: &str) -> Result<Step, ParseError> {
+    fn from_str(s: &str) -> Result<Step, ParseError> {
         match s.to_uppercase().as_str() {
             "C" => Ok(Step::C),
             "D" => Ok(Step::D),

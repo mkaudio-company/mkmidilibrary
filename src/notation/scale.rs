@@ -69,7 +69,7 @@ impl Scale {
 
         (0..7)
             .map(|i| {
-                let letter = Step::from_index(tonic_step_index + i as i32);
+                let letter = Step::from_index(tonic_step_index + i);
                 let target_pc = (tonic_pc + intervals[i as usize]).rem_euclid(12);
                 let natural_pc = letter.pitch_class() as i32;
                 let alter = shortest_alter(natural_pc, target_pc);

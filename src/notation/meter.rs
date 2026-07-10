@@ -168,7 +168,7 @@ impl TimeSignature {
     /// Check if this is compound meter (divisible by 3, and more than a
     /// single triplet-beat)
     pub fn is_compound(&self) -> bool {
-        self.explicit_groups().is_none() && self.numerator > 3 && self.numerator % 3 == 0
+        self.explicit_groups().is_none() && self.numerator > 3 && self.numerator.is_multiple_of(3)
     }
 
     /// Check if this is simple meter (2, 3, or 4 beats to the bar)
@@ -217,10 +217,10 @@ impl TimeSignature {
         if let Some(groups) = self.explicit_groups() {
             return groups.to_vec();
         }
-        if self.numerator > 3 && self.numerator % 3 == 0 {
+        if self.numerator > 3 && self.numerator.is_multiple_of(3) {
             return vec![3; (self.numerator / 3) as usize];
         }
-        if !(self.numerator <= 4) {
+        if self.numerator > 4 {
             return self
                 .additive_groupings()
                 .into_iter()
@@ -354,9 +354,9 @@ impl TimeSignature {
 
         // One 3 plus the remaining as 2s (and its reverse), if the
         // remainder after removing a single 3 is even.
-        if n >= 3 && (n - 3) % 2 == 0 {
+        if n >= 3 && (n - 3).is_multiple_of(2) {
             let mut g = vec![3];
-            g.extend(std::iter::repeat(2).take(((n - 3) / 2) as usize));
+            g.extend(std::iter::repeat_n(2, ((n - 3) / 2) as usize));
             let mut rev = g.clone();
             rev.reverse();
             groupings.push(g.clone());
@@ -368,9 +368,9 @@ impl TimeSignature {
         // Two 3s plus the remaining as 2s (and its reverse), for larger
         // additive meters where that's also a common grouping (e.g. 11 =
         // 4+4+3 style groupings live here as [3,3,...2s]-shaped options).
-        if n >= 6 && (n - 6) % 2 == 0 {
+        if n >= 6 && (n - 6).is_multiple_of(2) {
             let mut g = vec![3, 3];
-            g.extend(std::iter::repeat(2).take(((n - 6) / 2) as usize));
+            g.extend(std::iter::repeat_n(2, ((n - 6) / 2) as usize));
             let mut rev = g.clone();
             rev.reverse();
             if !groupings.contains(&g) {
@@ -382,7 +382,7 @@ impl TimeSignature {
         }
 
         // All-2s, if the numerator is even.
-        if n % 2 == 0 {
+        if n.is_multiple_of(2) {
             let g = vec![2; (n / 2) as usize];
             if !groupings.contains(&g) {
                 groupings.push(g);

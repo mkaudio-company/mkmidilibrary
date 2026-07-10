@@ -496,20 +496,18 @@ impl Part {
         for (start, end, total_duration) in merges {
             let first = &recursed[start];
             if let Some(measure) = self.measures.iter_mut().find(|m| m.number() == first.measure_number) {
-                if let Some((_, element)) = measure
+                if let Some((_, MusicElement::Note(note))) = measure
                     .stream_mut()
                     .elements_mut()
                     .iter_mut()
                     .find(|(o, _)| *o == first.offset_in_measure)
                 {
-                    if let MusicElement::Note(note) = element {
-                        note.set_duration(Duration::from_quarter_length(total_duration));
-                        note.set_tie(None);
-                    }
+                    note.set_duration(Duration::from_quarter_length(total_duration));
+                    note.set_tie(None);
                 }
             }
-            for k in (start + 1)..=end {
-                removals.push((recursed[k].measure_number, recursed[k].offset_in_measure));
+            for recursed_element in recursed.iter().take(end + 1).skip(start + 1) {
+                removals.push((recursed_element.measure_number, recursed_element.offset_in_measure));
             }
         }
 
@@ -557,15 +555,13 @@ impl Part {
     /// its tie, if found (used by `extend_ties`).
     fn set_note_tie(&mut self, measure_number: u32, offset: Fraction, tie: Tie) {
         if let Some(measure) = self.measures.iter_mut().find(|m| m.number() == measure_number) {
-            if let Some((_, element)) = measure
+            if let Some((_, MusicElement::Note(note))) = measure
                 .stream_mut()
                 .elements_mut()
                 .iter_mut()
                 .find(|(o, _)| *o == offset)
             {
-                if let MusicElement::Note(note) = element {
-                    note.set_tie(Some(tie));
-                }
+                note.set_tie(Some(tie));
             }
         }
     }

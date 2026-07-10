@@ -91,10 +91,10 @@ impl NoteElement {
 
     /// Check if the note needs a stem
     fn needs_stem(&self) -> bool {
-        match self.note.duration().type_() {
-            Some(DurationType::Whole) | Some(DurationType::Breve) | None => false,
-            _ => true,
-        }
+        !matches!(
+            self.note.duration().type_(),
+            Some(DurationType::Whole) | Some(DurationType::Breve) | None
+        )
     }
 
     /// Check if the note needs flags
@@ -153,12 +153,10 @@ impl NoteElement {
 
     /// Check if the notehead should be filled
     fn is_filled_notehead(&self) -> bool {
-        match self.note.duration().type_() {
-            Some(DurationType::Whole)
-            | Some(DurationType::Breve)
-            | Some(DurationType::Half) => false,
-            _ => true,
-        }
+        !matches!(
+            self.note.duration().type_(),
+            Some(DurationType::Whole) | Some(DurationType::Breve) | Some(DurationType::Half)
+        )
     }
 
     /// Draw the stem

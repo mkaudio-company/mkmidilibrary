@@ -223,7 +223,7 @@ impl Stream {
     /// Sort elements by offset
     pub fn sort(&mut self) {
         if !self.is_sorted {
-            self.elements.sort_by(|(a, _), (b, _)| a.cmp(b));
+            self.elements.sort_by_key(|(a, _)| *a);
             self.is_sorted = true;
         }
     }
@@ -306,14 +306,14 @@ impl Stream {
     /// Shift all elements by an offset
     pub fn shift_elements(&mut self, shift: Fraction) {
         for (offset, _) in &mut self.elements {
-            *offset = *offset + shift;
+            *offset += shift;
         }
     }
 
     /// Scale all offsets by a factor
     pub fn scale_offsets(&mut self, scale: Fraction) {
         for (offset, _) in &mut self.elements {
-            *offset = *offset * scale;
+            *offset *= scale;
         }
     }
 

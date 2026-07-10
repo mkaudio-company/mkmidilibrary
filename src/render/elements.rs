@@ -141,7 +141,7 @@ impl ScoreElement {
             staff.draw_to_canvas(canvas, &config.colors.staff_lines);
 
             // Draw clef
-            let mut clef_element = ClefElement::new(part.clef.clone());
+            let mut clef_element = ClefElement::new(part.clef);
             clef_element.set_position(config.margin_left + 5.0, staff_y);
             clef_element.draw_to_canvas(canvas, config);
 
@@ -185,9 +185,7 @@ impl ScoreElement {
                         bar_x - 6.0,
                         top_y,
                         bottom_y,
-                        1.0,
-                        3.0,
-                        4.0,
+                        (1.0, 3.0, 4.0),
                         &config.colors.bar_lines,
                     );
                 } else {
@@ -280,7 +278,7 @@ pub fn render_score_to_image(score: &Score, config: &RenderConfig) -> Option<Vec
     element.draw_to_canvas(&mut canvas, config);
 
     // Return PNG data
-    Some(canvas.pixmap().encode_png().ok()?)
+    canvas.pixmap().encode_png().ok()
 }
 
 #[cfg(test)]

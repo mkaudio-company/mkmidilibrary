@@ -95,7 +95,7 @@ impl StaffElement {
             let num_ledgers = (position - 4 + 1) / 2;
             for i in 1..=num_ledgers {
                 let ledger_pos = 4 + (i * 2);
-                let y = self.position_y(ledger_pos as i8);
+                let y = self.position_y(ledger_pos);
                 canvas.begin_path();
                 canvas.move_to(Point::new(ledger_start, y));
                 canvas.line_to(Point::new(ledger_end, y));
@@ -108,7 +108,7 @@ impl StaffElement {
             let num_ledgers = (-4 - position + 1) / 2;
             for i in 1..=num_ledgers {
                 let ledger_pos = -4 - (i * 2);
-                let y = self.position_y(ledger_pos as i8);
+                let y = self.position_y(ledger_pos);
                 canvas.begin_path();
                 canvas.move_to(Point::new(ledger_start, y));
                 canvas.line_to(Point::new(ledger_end, y));
@@ -156,17 +156,17 @@ pub fn draw_bar_line(
     canvas.stroke();
 }
 
-/// Draw a double bar line
+/// Draw a double bar line. `widths` is `(thin_width, thick_width, spacing)`
+/// between the two lines.
 pub fn draw_double_bar_line(
     canvas: &mut Canvas,
     x: f32,
     top_y: f32,
     bottom_y: f32,
-    thin_width: f32,
-    thick_width: f32,
-    spacing: f32,
+    widths: (f32, f32, f32),
     colors: &(f32, f32, f32, f32),
 ) {
+    let (thin_width, thick_width, spacing) = widths;
     let color = Color::new(colors.0, colors.1, colors.2, colors.3);
 
     // Thin line

@@ -5,7 +5,7 @@ use std::fmt;
 use super::ParseError;
 
 /// Musical accidental (sharp, flat, natural, etc.)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Accidental {
     /// Triple flat (bbb) - lowers pitch by 3 semitones
     TripleFlat,
@@ -14,6 +14,7 @@ pub enum Accidental {
     /// Flat (b) - lowers pitch by 1 semitone
     Flat,
     /// Natural - no alteration
+    #[default]
     Natural,
     /// Sharp (#) - raises pitch by 1 semitone
     Sharp,
@@ -64,22 +65,6 @@ impl Accidental {
             x if (x - 2.0).abs() < 0.01 => Some(Accidental::DoubleSharp),
             x if (x - 3.0).abs() < 0.01 => Some(Accidental::TripleSharp),
             _ => None,
-        }
-    }
-
-    /// Parse accidental from string
-    pub fn from_str(s: &str) -> Result<Accidental, ParseError> {
-        match s.to_lowercase().as_str() {
-            "bbb" | "triple-flat" => Ok(Accidental::TripleFlat),
-            "bb" | "--" | "double-flat" => Ok(Accidental::DoubleFlat),
-            "b" | "-" | "flat" => Ok(Accidental::Flat),
-            "" | "n" | "natural" => Ok(Accidental::Natural),
-            "#" | "sharp" => Ok(Accidental::Sharp),
-            "##" | "x" | "++" | "double-sharp" => Ok(Accidental::DoubleSharp),
-            "###" | "triple-sharp" => Ok(Accidental::TripleSharp),
-            "~" | "half-flat" | "quarter-flat" => Ok(Accidental::QuarterFlat),
-            "`" | "half-sharp" | "quarter-sharp" => Ok(Accidental::QuarterSharp),
-            _ => Err(ParseError::InvalidAccidental(s.to_string())),
         }
     }
 
@@ -148,9 +133,22 @@ impl Accidental {
     }
 }
 
-impl Default for Accidental {
-    fn default() -> Self {
-        Accidental::Natural
+impl std::str::FromStr for Accidental {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Accidental, ParseError> {
+        match s.to_lowercase().as_str() {
+            "bbb" | "triple-flat" => Ok(Accidental::TripleFlat),
+            "bb" | "--" | "double-flat" => Ok(Accidental::DoubleFlat),
+            "b" | "-" | "flat" => Ok(Accidental::Flat),
+            "" | "n" | "natural" => Ok(Accidental::Natural),
+            "#" | "sharp" => Ok(Accidental::Sharp),
+            "##" | "x" | "++" | "double-sharp" => Ok(Accidental::DoubleSharp),
+            "###" | "triple-sharp" => Ok(Accidental::TripleSharp),
+            "~" | "half-flat" | "quarter-flat" => Ok(Accidental::QuarterFlat),
+            "`" | "half-sharp" | "quarter-sharp" => Ok(Accidental::QuarterSharp),
+            _ => Err(ParseError::InvalidAccidental(s.to_string())),
+        }
     }
 }
 
@@ -268,6 +266,7 @@ impl Default for Microtone {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     #[test]
     fn test_accidental_alter() {

@@ -102,13 +102,7 @@ impl DurationType {
             return Some(DurationType::Zero);
         }
 
-        for t in ALL_DURATION_TYPES {
-            if t.quarter_length() == ql {
-                return Some(t);
-            }
-        }
-
-        None
+        ALL_DURATION_TYPES.into_iter().find(|&t| t.quarter_length() == ql)
     }
 
     /// Get the standard name
@@ -134,8 +128,13 @@ impl DurationType {
         }
     }
 
+}
+
+impl std::str::FromStr for DurationType {
+    type Err = ParseError;
+
     /// Parse from string
-    pub fn from_str(s: &str) -> Result<DurationType, ParseError> {
+    fn from_str(s: &str) -> Result<DurationType, ParseError> {
         match s.to_lowercase().as_str() {
             "duplex maxima" | "duplex-maxima" => Ok(DurationType::DuplexMaxima),
             "maxima" => Ok(DurationType::Maxima),
@@ -516,7 +515,7 @@ impl Duration {
             match best {
                 Some((type_, dots, ql)) if ql > Fraction::zero() => {
                     components.push(DurationTuple::new(type_, dots));
-                    remaining = remaining - ql;
+                    remaining -= ql;
                 }
                 _ => break,
             }
@@ -551,7 +550,7 @@ impl Duration {
                 let mut piece_len = type_.quarter_length() / 2;
                 for _ in 0..self.dots {
                     pieces.push(Duration::from_quarter_length(piece_len));
-                    piece_len = piece_len / 2;
+                    piece_len /= 2;
                 }
                 pieces
             }
@@ -578,7 +577,7 @@ impl Duration {
             if position < offset + len {
                 return Some(i);
             }
-            offset = offset + len;
+            offset += len;
         }
         None
     }
@@ -592,7 +591,7 @@ impl Duration {
         }
         let mut offset = Fraction::zero();
         for c in &comps[..index] {
-            offset = offset + c.quarter_length();
+            offset += c.quarter_length();
         }
         Some(offset)
     }
@@ -602,7 +601,7 @@ impl Duration {
     pub fn quarter_length_no_tuplets(&self) -> Fraction {
         let mut ql = self.quarter_length;
         for tuplet in &self.tuplets {
-            ql = ql / tuplet.multiplier();
+            ql /= tuplet.multiplier();
         }
         ql
     }
@@ -645,13 +644,13 @@ impl Duration {
         let mut ql = base;
         let mut dot_value = base / 2;
         for _ in 0..dots {
-            ql = ql + dot_value;
-            dot_value = dot_value / 2;
+            ql += dot_value;
+            dot_value /= 2;
         }
 
         // Apply tuplets
         for tuplet in tuplets {
-            ql = ql * tuplet.multiplier();
+            ql *= tuplet.multiplier();
         }
 
         ql

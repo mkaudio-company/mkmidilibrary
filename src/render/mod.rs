@@ -190,7 +190,7 @@ pub fn midi_to_staff_position(midi: u8, clef: &Clef) -> StaffPosition {
         6 => 11,
         _ => 0,
     };
-    let accidental = (semitones_in_octave - expected_semitones) as i8;
+    let accidental = semitones_in_octave - expected_semitones;
 
     StaffPosition::new(position, accidental)
 }
