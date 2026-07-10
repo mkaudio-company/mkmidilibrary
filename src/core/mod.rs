@@ -21,15 +21,15 @@ pub use accidental::{Accidental, AccidentalDisplay, AccidentalDisplayType, Micro
 pub use chord::{Chord, ChordQuality};
 pub use duration::{Duration, DurationTuple, DurationType, GraceDuration, Tuplet, TupletFixer};
 pub use interval::{
-    add, convert_diatonic_number_to_step, get_absolute_higher_note, get_absolute_lower_note,
-    get_written_higher_note, get_written_lower_note, notes_to_interval, subtract, Interval,
-    IntervalQuality,
+    Interval, IntervalQuality, add, convert_diatonic_number_to_step, get_absolute_higher_note,
+    get_absolute_lower_note, get_written_higher_note, get_written_lower_note, notes_to_interval,
+    subtract,
 };
 pub use note::{
-    is_composite_lyric_set, Articulation, ArticulationMark, Expression, ExpressionType, Lyric,
-    Note, NoteHead, NoteHeadType, StemDirection, Tie, TieType, Unpitched, Volume,
+    Articulation, ArticulationMark, Expression, ExpressionType, Lyric, Note, NoteHead,
+    NoteHeadType, StemDirection, Tie, TieType, Unpitched, Volume, is_composite_lyric_set,
 };
-pub use pitch::{update_accidental_display, Pitch, Step};
+pub use pitch::{Pitch, Step, update_accidental_display};
 pub use rest::{FullMeasureRest, Rest};
 
 use num::rational::Ratio;

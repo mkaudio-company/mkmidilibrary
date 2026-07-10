@@ -1357,12 +1357,13 @@ mod tests {
         assert!(channels.contains(&0));
         assert!(channels.contains(&2));
         // The untouched track (originally index 1) is still present.
-        assert!(file
-            .track(1)
-            .unwrap()
-            .events()
-            .iter()
-            .any(|e| e.channel() == Some(1)));
+        assert!(
+            file.track(1)
+                .unwrap()
+                .events()
+                .iter()
+                .any(|e| e.channel() == Some(1))
+        );
     }
 
     #[test]

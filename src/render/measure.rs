@@ -8,8 +8,8 @@ use num::{ToPrimitive, Zero};
 
 use super::config::RenderConfig;
 use super::note::NoteElement;
-use super::staff::{draw_bar_line, draw_double_bar_line, StaffElement};
-use super::{midi_to_staff_position, STAFF_HEIGHT, STAFF_SPACE};
+use super::staff::{StaffElement, draw_bar_line, draw_double_bar_line};
+use super::{STAFF_HEIGHT, STAFF_SPACE, midi_to_staff_position};
 use crate::core::Fraction;
 use crate::notation::{Clef, KeySignature, TimeSignature};
 use crate::stream::{Measure, MusicElement};

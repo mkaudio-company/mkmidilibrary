@@ -420,10 +420,10 @@ impl Duration {
     /// Set the number of dots
     pub fn set_dots(&mut self, dots: u8) {
         self.dots = dots;
-        if self.linked {
-            if let Some(type_) = self.type_ {
-                self.quarter_length = Self::calculate_quarter_length(type_, dots, &self.tuplets);
-            }
+        if self.linked
+            && let Some(type_) = self.type_
+        {
+            self.quarter_length = Self::calculate_quarter_length(type_, dots, &self.tuplets);
         }
     }
 
@@ -435,22 +435,20 @@ impl Duration {
     /// Add a tuplet
     pub fn add_tuplet(&mut self, tuplet: Tuplet) {
         self.tuplets.push(tuplet);
-        if self.linked {
-            if let Some(type_) = self.type_ {
-                self.quarter_length =
-                    Self::calculate_quarter_length(type_, self.dots, &self.tuplets);
-            }
+        if self.linked
+            && let Some(type_) = self.type_
+        {
+            self.quarter_length = Self::calculate_quarter_length(type_, self.dots, &self.tuplets);
         }
     }
 
     /// Clear all tuplets
     pub fn clear_tuplets(&mut self) {
         self.tuplets.clear();
-        if self.linked {
-            if let Some(type_) = self.type_ {
-                self.quarter_length =
-                    Self::calculate_quarter_length(type_, self.dots, &self.tuplets);
-            }
+        if self.linked
+            && let Some(type_) = self.type_
+        {
+            self.quarter_length = Self::calculate_quarter_length(type_, self.dots, &self.tuplets);
         }
     }
 
@@ -736,10 +734,10 @@ impl FromStr for Duration {
         }
 
         // Try to parse as a fraction (e.g., "1/4" for quarter note)
-        if let Some((num, denom)) = s.split_once('/') {
-            if let (Ok(n), Ok(d)) = (num.trim().parse::<i64>(), denom.trim().parse::<i64>()) {
-                return Ok(Duration::from_quarter_length(Fraction::new(n, d)));
-            }
+        if let Some((num, denom)) = s.split_once('/')
+            && let (Ok(n), Ok(d)) = (num.trim().parse::<i64>(), denom.trim().parse::<i64>())
+        {
+            return Ok(Duration::from_quarter_length(Fraction::new(n, d)));
         }
 
         // Try to parse as a decimal

@@ -1,7 +1,7 @@
 //! ALSA implementation for Linux
 
-use super::port::MidiPort;
 use super::RtMidiError;
+use super::port::MidiPort;
 
 /// Get available MIDI input ports
 pub fn get_input_ports() -> Vec<MidiPort> {

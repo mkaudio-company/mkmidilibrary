@@ -5,7 +5,7 @@
 
 use crate::stream::Part;
 
-use super::discrete::{find_key, pitch_class_distribution, KeyAnalysisResult, KeyFindingAlgorithm};
+use super::discrete::{KeyAnalysisResult, KeyFindingAlgorithm, find_key, pitch_class_distribution};
 
 /// One sliding-window position's local key-finding result.
 #[derive(Debug, Clone, PartialEq)]

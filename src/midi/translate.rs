@@ -1,9 +1,9 @@
 //! Score to MIDI conversion and vice versa
 
+use super::MidiFormat;
 use super::file::MidiFile;
 use super::message::{MetaEvent, MidiMessage};
 use super::track::MidiTrack;
-use super::MidiFormat;
 
 use crate::core::{Duration, Fraction, Note, Pitch};
 use crate::stream::{Measure, Part, Score};
@@ -236,14 +236,14 @@ impl MidiToScore {
         let mut notes: Vec<(u64, u64, u8, u8)> = Vec::new(); // (start, duration, key, velocity)
 
         for event in track.events() {
-            if event.is_note_on() {
-                if let (Some(key), Some(vel), Some(duration)) = (
+            if event.is_note_on()
+                && let (Some(key), Some(vel), Some(duration)) = (
                     event.key(),
                     event.velocity(),
                     event.tick_duration(track.events()),
-                ) {
-                    notes.push((event.tick(), duration, key, vel));
-                }
+                )
+            {
+                notes.push((event.tick(), duration, key, vel));
             }
         }
 

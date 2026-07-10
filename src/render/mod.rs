@@ -18,7 +18,7 @@ mod staff;
 
 pub use clef::ClefElement;
 pub use config::{RenderConfig, StaffConfig};
-pub use elements::{render_score_to_image, ScoreElement};
+pub use elements::{ScoreElement, render_score_to_image};
 pub use measure::MeasureElement;
 pub use note::NoteElement;
 pub use staff::StaffElement;

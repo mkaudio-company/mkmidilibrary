@@ -4,7 +4,7 @@
 
 use std::fmt;
 
-use super::event::{compare_events, MidiEvent, NoteSortOrder};
+use super::event::{MidiEvent, NoteSortOrder, compare_events};
 use super::message::{MetaEvent, MidiMessage};
 
 /// A MIDI track containing events
@@ -202,18 +202,18 @@ impl MidiTrack {
         for i in 0..self.events.len() {
             let event = &self.events[i];
 
-            if let Some(channel) = event.channel() {
-                if let Some(key) = event.key() {
-                    let idx = (channel as usize) * 128 + (key as usize);
+            if let Some(channel) = event.channel()
+                && let Some(key) = event.key()
+            {
+                let idx = (channel as usize) * 128 + (key as usize);
 
-                    if event.is_note_on() {
-                        active_notes[idx].push(i);
-                    } else if event.is_note_off() && !active_notes[idx].is_empty() {
-                        // FIFO linking
-                        let on_idx = active_notes[idx].remove(0);
-                        self.events[on_idx].set_linked_event(Some(i));
-                        self.events[i].set_linked_event(Some(on_idx));
-                    }
+                if event.is_note_on() {
+                    active_notes[idx].push(i);
+                } else if event.is_note_off() && !active_notes[idx].is_empty() {
+                    // FIFO linking
+                    let on_idx = active_notes[idx].remove(0);
+                    self.events[on_idx].set_linked_event(Some(i));
+                    self.events[i].set_linked_event(Some(on_idx));
                 }
             }
         }
@@ -232,18 +232,18 @@ impl MidiTrack {
         for i in 0..self.events.len() {
             let event = &self.events[i];
 
-            if let Some(channel) = event.channel() {
-                if let Some(key) = event.key() {
-                    let idx = (channel as usize) * 128 + (key as usize);
+            if let Some(channel) = event.channel()
+                && let Some(key) = event.key()
+            {
+                let idx = (channel as usize) * 128 + (key as usize);
 
-                    if event.is_note_on() {
-                        active_notes[idx].push(i);
-                    } else if event.is_note_off() {
-                        if let Some(on_idx) = active_notes[idx].pop() {
-                            self.events[on_idx].set_linked_event(Some(i));
-                            self.events[i].set_linked_event(Some(on_idx));
-                        }
-                    }
+                if event.is_note_on() {
+                    active_notes[idx].push(i);
+                } else if event.is_note_off()
+                    && let Some(on_idx) = active_notes[idx].pop()
+                {
+                    self.events[on_idx].set_linked_event(Some(i));
+                    self.events[i].set_linked_event(Some(on_idx));
                 }
             }
         }

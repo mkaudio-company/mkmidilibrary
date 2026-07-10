@@ -7,7 +7,7 @@ use mkgraphic::support::canvas::Canvas;
 use mkgraphic::support::circle::Circle;
 
 use super::config::{NoteConfig, RenderConfig};
-use super::{StaffPosition, STAFF_SPACE};
+use super::{STAFF_SPACE, StaffPosition};
 use crate::core::{DurationType, Note};
 
 /// A graphical element representing a musical note

@@ -9,9 +9,9 @@ mod message;
 mod track;
 mod translate;
 
-pub use event::{compare_events, MidiEvent, NoteSortOrder};
+pub use event::{MidiEvent, NoteSortOrder, compare_events};
 pub use file::{MidiFile, TickState, TrackState};
-pub use message::{frequency_to_semitones, MetaEvent, MidiMessage};
+pub use message::{MetaEvent, MidiMessage, frequency_to_semitones};
 pub use track::MidiTrack;
 pub use translate::{MidiToScore, ScoreToMidi};
 

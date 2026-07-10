@@ -22,16 +22,16 @@ mod tempo;
 pub use articulation::{
     ArticulationMark, ArticulationPlacement, HammerPullSpanner, HammerPullType,
 };
-pub use beam::{compute_beams, Beam, BeamType};
+pub use beam::{Beam, BeamType, compute_beams};
 pub use clef::{Clef, ClefSign};
 pub use dynamics::{
-    dynamic_str_from_decimal, DynamicWedge, DynamicWedgeType, Dynamics, DynamicsType,
+    DynamicWedge, DynamicWedgeType, Dynamics, DynamicsType, dynamic_str_from_decimal,
 };
 pub use expressions::{
     ArpeggioDirection, ArpeggioMark, Ornament, OrnamentKind, OrnamentSize, PedalMark,
     RehearsalMark, TextExpression, TremoloSpanner, TrillExtension, TurnDelay,
 };
-pub use key::{pitch_to_sharps, sharps_to_pitch, Key, KeyMode, KeySignature};
+pub use key::{Key, KeyMode, KeySignature, pitch_to_sharps, sharps_to_pitch};
 pub use meter::{MeterClassification, SenzaMisuraTimeSignature, TimeSignature};
 pub use scale::Scale;
 pub use spanner::{Spanner, SpannerAnchor};

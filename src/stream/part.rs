@@ -5,10 +5,10 @@
 use std::fmt;
 
 use crate::core::{
-    update_accidental_display, AccidentalDisplay, Duration, Fraction, Interval, Note, Pitch, Tie,
-    TieType,
+    AccidentalDisplay, Duration, Fraction, Interval, Note, Pitch, Tie, TieType,
+    update_accidental_display,
 };
-use crate::notation::{compute_beams, Beam, Clef, KeySignature, TimeSignature};
+use crate::notation::{Beam, Clef, KeySignature, TimeSignature, compute_beams};
 
 use super::base::MusicElement;
 use super::measure::Measure;
@@ -513,16 +513,14 @@ impl Part {
                 .measures
                 .iter_mut()
                 .find(|m| m.number() == first.measure_number)
-            {
-                if let Some((_, MusicElement::Note(note))) = measure
+                && let Some((_, MusicElement::Note(note))) = measure
                     .stream_mut()
                     .elements_mut()
                     .iter_mut()
                     .find(|(o, _)| *o == first.offset_in_measure)
-                {
-                    note.set_duration(Duration::from_quarter_length(total_duration));
-                    note.set_tie(None);
-                }
+            {
+                note.set_duration(Duration::from_quarter_length(total_duration));
+                note.set_tie(None);
             }
             for recursed_element in recursed.iter().take(end + 1).skip(start + 1) {
                 removals.push((
@@ -586,15 +584,13 @@ impl Part {
             .measures
             .iter_mut()
             .find(|m| m.number() == measure_number)
-        {
-            if let Some((_, MusicElement::Note(note))) = measure
+            && let Some((_, MusicElement::Note(note))) = measure
                 .stream_mut()
                 .elements_mut()
                 .iter_mut()
                 .find(|(o, _)| *o == offset)
-            {
-                note.set_tie(Some(tie));
-            }
+        {
+            note.set_tie(Some(tie));
         }
     }
 
@@ -867,10 +863,10 @@ impl Part {
                 });
             }
         }
-        if let Some(g) = divisor {
-            if g > Fraction::new(0, 1) {
-                self.slice_by_quarter_lengths(g, true);
-            }
+        if let Some(g) = divisor
+            && g > Fraction::new(0, 1)
+        {
+            self.slice_by_quarter_lengths(g, true);
         }
     }
 
@@ -1570,7 +1566,7 @@ mod tests {
         let mut part = Part::new();
         let mut m1 = Measure::new(1);
         m1.set_time_signature(TimeSignature::new(4, 4)); // beats at 0,1,2,3
-                                                         // A note from offset 0.5 to 1.5 crosses the beat boundary at 1.
+        // A note from offset 0.5 to 1.5 crosses the beat boundary at 1.
         m1.insert(
             Fraction::new(1, 2),
             MusicElement::Note(Note::new(
@@ -1702,8 +1698,8 @@ mod tests {
         let mut part = Part::new();
         let mut m1 = Measure::new(1);
         m1.set_key_signature(KeySignature::g_major()); // F# implied
-                                                       // F# matches the key signature (shouldn't need display); F
-                                                       // natural contradicts it (must be displayed).
+        // F# matches the key signature (shouldn't need display); F
+        // natural contradicts it (must be displayed).
         m1.insert(
             Fraction::new(0, 1),
             MusicElement::Note(Note::quarter(Pitch::from_parts(
@@ -1742,12 +1738,14 @@ mod tests {
         let info = part.make_notation();
 
         // make_ties should have split the overflowing half note.
-        assert!(part.measure(0).unwrap().elements()[0]
-            .1
-            .as_note()
-            .unwrap()
-            .tie()
-            .is_some());
+        assert!(
+            part.measure(0).unwrap().elements()[0]
+                .1
+                .as_note()
+                .unwrap()
+                .tie()
+                .is_some()
+        );
         assert_eq!(info.len(), 2);
     }
 
@@ -1758,7 +1756,7 @@ mod tests {
         let mut part = Part::new();
         let mut m1 = Measure::new(1);
         m1.set_time_signature(TimeSignature::new(2, 4)); // only 2 quarters
-                                                         // A half note (2 quarters) at offset 1 overflows by 1 quarter.
+        // A half note (2 quarters) at offset 1 overflows by 1 quarter.
         m1.insert(
             Fraction::new(1, 1),
             MusicElement::Note(Note::half(Pitch::from_parts(Step::C, Some(4), None))),
@@ -2030,9 +2028,10 @@ mod tests {
         let at_or_before = part.get_element_at_or_before(Fraction::new(3, 1)).unwrap();
         assert_eq!(at_or_before.0, Fraction::new(2, 1));
 
-        assert!(part
-            .get_element_at_or_before(Fraction::new(-1, 1))
-            .is_none());
+        assert!(
+            part.get_element_at_or_before(Fraction::new(-1, 1))
+                .is_none()
+        );
     }
 
     #[test]

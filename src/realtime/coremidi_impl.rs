@@ -6,8 +6,8 @@ use coremidi::{
 };
 use std::sync::{Arc, Mutex};
 
-use super::port::{Api, MidiPort};
 use super::RtMidiError;
+use super::port::{Api, MidiPort};
 
 /// Get available MIDI input sources
 pub fn get_input_ports() -> Vec<MidiPort> {

@@ -11,12 +11,12 @@ mod floating_key;
 mod melody;
 mod reduce_chords;
 
-pub use chord_analysis::{roman_numeral_from_chord, ChordAnalyzer, ChordQuality, RomanNumeral};
+pub use chord_analysis::{ChordAnalyzer, ChordQuality, RomanNumeral, roman_numeral_from_chord};
 pub use discrete::{
-    analyze_part, analyze_part_with_certainty, find_key, pitch_class_distribution, tonal_certainty,
-    KeyAnalysisResult, KeyFindingAlgorithm,
+    KeyAnalysisResult, KeyFindingAlgorithm, analyze_part, analyze_part_with_certainty, find_key,
+    pitch_class_distribution, tonal_certainty,
 };
-pub use floating_key::{analyze_floating_key, detect_modulations, WindowedKeyResult};
+pub use floating_key::{WindowedKeyResult, analyze_floating_key, detect_modulations};
 pub use melody::{ambitus, melodic_interval_diversity};
 pub use reduce_chords::ChordReducer;
 

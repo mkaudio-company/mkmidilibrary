@@ -187,11 +187,7 @@ fn diatonic_neighbor(main_pitch: &Pitch, key: &Key, upper: bool) -> Pitch {
     };
 
     let neighbor_degree = if upper {
-        if degree == 7 {
-            1
-        } else {
-            degree + 1
-        }
+        if degree == 7 { 1 } else { degree + 1 }
     } else if degree == 1 {
         7
     } else {

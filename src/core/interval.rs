@@ -419,22 +419,14 @@ impl Interval {
     /// `GenericInterval.semiSimpleUndirected`.
     pub fn semi_simple_undirected(&self) -> i32 {
         let n = self.generic.abs() + 1;
-        if n <= 8 {
-            n
-        } else {
-            ((n - 2) % 7) + 2
-        }
+        if n <= 8 { n } else { ((n - 2) % 7) + 2 }
     }
 
     /// Directed version of `semi_simple_undirected` (negative for
     /// descending intervals).
     pub fn semi_simple_directed(&self) -> i32 {
         let n = self.semi_simple_undirected();
-        if self.generic < 0 {
-            -n
-        } else {
-            n
-        }
+        if self.generic < 0 { -n } else { n }
     }
 
     /// 1-indexed simple generic size (1-7): like `semi_simple_undirected`,
@@ -442,21 +434,13 @@ impl Interval {
     /// (unison) rather than staying 8. Always positive (undirected).
     pub fn simple_undirected(&self) -> i32 {
         let n = self.semi_simple_undirected();
-        if n == 8 {
-            1
-        } else {
-            n
-        }
+        if n == 8 { 1 } else { n }
     }
 
     /// Directed version of `simple_undirected`.
     pub fn simple_directed(&self) -> i32 {
         let n = self.simple_undirected();
-        if self.generic < 0 {
-            -n
-        } else {
-            n
-        }
+        if self.generic < 0 { -n } else { n }
     }
 
     // -- Name variants --
