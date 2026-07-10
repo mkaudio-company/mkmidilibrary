@@ -43,7 +43,11 @@ impl KeyMode {
     fn is_minor_like(&self) -> bool {
         matches!(
             self,
-            KeyMode::Minor | KeyMode::Aeolian | KeyMode::Dorian | KeyMode::Phrygian | KeyMode::Locrian
+            KeyMode::Minor
+                | KeyMode::Aeolian
+                | KeyMode::Dorian
+                | KeyMode::Phrygian
+                | KeyMode::Locrian
         )
     }
 }
@@ -101,7 +105,11 @@ const MINOR_TONICS: [(Step, Option<Accidental>); 15] = [
 /// `key.sharpsToPitch` (generalized here to also take the mode).
 pub fn sharps_to_pitch(sharps: i8, minor: bool) -> Pitch {
     let idx = (sharps.clamp(-7, 7) + 7) as usize;
-    let (step, accidental) = if minor { MINOR_TONICS[idx] } else { MAJOR_TONICS[idx] };
+    let (step, accidental) = if minor {
+        MINOR_TONICS[idx]
+    } else {
+        MAJOR_TONICS[idx]
+    };
     Pitch::from_parts(step, None, accidental)
 }
 
@@ -337,8 +345,24 @@ impl KeySignature {
 
     /// Get the altered pitches
     pub fn altered_pitches(&self) -> Vec<Step> {
-        let sharp_order = [Step::F, Step::C, Step::G, Step::D, Step::A, Step::E, Step::B];
-        let flat_order = [Step::B, Step::E, Step::A, Step::D, Step::G, Step::C, Step::F];
+        let sharp_order = [
+            Step::F,
+            Step::C,
+            Step::G,
+            Step::D,
+            Step::A,
+            Step::E,
+            Step::B,
+        ];
+        let flat_order = [
+            Step::B,
+            Step::E,
+            Step::A,
+            Step::D,
+            Step::G,
+            Step::C,
+            Step::F,
+        ];
 
         if self.sharps > 0 {
             sharp_order[..self.sharps as usize].to_vec()

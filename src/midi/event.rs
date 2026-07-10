@@ -135,12 +135,12 @@ impl MidiEvent {
     /// Get the duration in seconds (for note events with linked note-off)
     pub fn duration_seconds(&self, events: &[MidiEvent]) -> Option<f64> {
         self.linked_event.and_then(|idx| {
-            events.get(idx).and_then(|linked| {
-                match (self.seconds, linked.seconds) {
+            events
+                .get(idx)
+                .and_then(|linked| match (self.seconds, linked.seconds) {
                     (Some(start), Some(end)) => Some(end - start),
                     _ => None,
-                }
-            })
+                })
         })
     }
 
@@ -194,7 +194,10 @@ impl MidiEvent {
 
     /// Create convenience control change event
     pub fn control_change(tick: u64, channel: u8, controller: u8, value: u8) -> Self {
-        Self::new(tick, MidiMessage::control_change(channel, controller, value))
+        Self::new(
+            tick,
+            MidiMessage::control_change(channel, controller, value),
+        )
     }
 
     /// Create convenience program change event
@@ -275,7 +278,11 @@ pub fn compare_events(a: &MidiEvent, b: &MidiEvent, order: NoteSortOrder) -> Ord
 /// Sorting priority for event types with note-ons before note-offs (default).
 fn event_priority(msg: &MidiMessage) -> i32 {
     if let MidiMessage::Meta(meta) = msg {
-        return if matches!(meta, MetaEvent::EndOfTrack) { i32::MAX } else { 0 };
+        return if matches!(meta, MetaEvent::EndOfTrack) {
+            i32::MAX
+        } else {
+            0
+        };
     }
     if msg.is_note_on() {
         return 2;
@@ -291,7 +298,11 @@ fn event_priority(msg: &MidiMessage) -> i32 {
 /// Sorting priority for event types with note-offs before note-ons.
 fn event_priority_note_offs_before_ons(msg: &MidiMessage) -> i32 {
     if let MidiMessage::Meta(meta) = msg {
-        return if matches!(meta, MetaEvent::EndOfTrack) { i32::MAX } else { 0 };
+        return if matches!(meta, MetaEvent::EndOfTrack) {
+            i32::MAX
+        } else {
+            0
+        };
     }
     if msg.is_note_off() {
         return 2;
@@ -343,7 +354,10 @@ mod tests {
             MidiEvent::control_change(0, 0, 64, 127),
         ];
         events.sort();
-        assert!(matches!(events[0].message(), MidiMessage::ControlChange { .. }));
+        assert!(matches!(
+            events[0].message(),
+            MidiMessage::ControlChange { .. }
+        ));
         assert!(events[1].is_note_on());
     }
 
@@ -355,7 +369,10 @@ mod tests {
             MidiEvent::note_on(10, 0, 60, 100),
         ];
         events.sort();
-        assert!(matches!(events[2].message(), MidiMessage::Meta(MetaEvent::EndOfTrack)));
+        assert!(matches!(
+            events[2].message(),
+            MidiMessage::Meta(MetaEvent::EndOfTrack)
+        ));
     }
 
     #[test]
@@ -371,7 +388,10 @@ mod tests {
         let mut events = vec![cc.clone(), note_on.clone()];
         events.sort();
         assert!(events[0].is_note_on());
-        assert!(matches!(events[1].message(), MidiMessage::ControlChange { .. }));
+        assert!(matches!(
+            events[1].message(),
+            MidiMessage::ControlChange { .. }
+        ));
     }
 
     #[test]
@@ -384,5 +404,4 @@ mod tests {
         let events = vec![on.clone(), off];
         assert_eq!(on.tick_duration(&events), Some(100));
     }
-
 }

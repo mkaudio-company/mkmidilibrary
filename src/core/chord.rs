@@ -77,7 +77,10 @@ impl Chord {
     }
 
     /// Create a chord from pitch strings
-    pub fn from_pitch_strings(pitches: &[&str], duration: Duration) -> Result<Self, super::ParseError> {
+    pub fn from_pitch_strings(
+        pitches: &[&str],
+        duration: Duration,
+    ) -> Result<Self, super::ParseError> {
         let parsed: Result<Vec<Pitch>, _> = pitches.iter().map(|s| s.parse()).collect();
         Ok(Self::from_pitches(parsed?, duration))
     }
@@ -442,7 +445,11 @@ impl Chord {
 
     /// Transpose by semitones
     pub fn transpose_semitones(&self, semitones: i32) -> Chord {
-        let notes = self.notes.iter().map(|n| n.transpose_semitones(semitones)).collect();
+        let notes = self
+            .notes
+            .iter()
+            .map(|n| n.transpose_semitones(semitones))
+            .collect();
         Chord {
             notes,
             duration: self.duration.clone(),
@@ -594,7 +601,10 @@ impl Chord {
     /// chromatic/non-diatonic tone).
     pub fn scale_degrees(&self, key: &crate::notation::Key) -> Vec<Option<u8>> {
         let scale = crate::notation::Scale::new(key.tonic().clone(), key.mode());
-        self.notes.iter().map(|n| scale.degree_of(n.pitch())).collect()
+        self.notes
+            .iter()
+            .map(|n| scale.degree_of(n.pitch()))
+            .collect()
     }
 
     /// Whether this chord is a three-distinct-pitch-class chord matching
@@ -678,7 +688,8 @@ impl Chord {
     fn has_interval_from(&self, base: &Pitch, generic: i32, semitones: i32) -> bool {
         self.notes.iter().any(|n| {
             let iv = Interval::between(base, n.pitch());
-            iv.mod7() == generic.rem_euclid(7) && iv.semitones().rem_euclid(12) == semitones.rem_euclid(12)
+            iv.mod7() == generic.rem_euclid(7)
+                && iv.semitones().rem_euclid(12) == semitones.rem_euclid(12)
         })
     }
 
@@ -1024,10 +1035,10 @@ mod tests {
     fn test_chord_z_related_tetrachords() {
         // 4-Z15 = {0,1,4,6} and 4-Z29 = {0,1,3,7} share an interval vector
         // but are not transpositions/inversions of each other.
-        let z15 = Chord::from_pitch_strings(&["C4", "C#4", "E4", "F#4"], Duration::quarter())
-            .unwrap();
-        let z29 = Chord::from_pitch_strings(&["C4", "C#4", "D#4", "G4"], Duration::quarter())
-            .unwrap();
+        let z15 =
+            Chord::from_pitch_strings(&["C4", "C#4", "E4", "F#4"], Duration::quarter()).unwrap();
+        let z29 =
+            Chord::from_pitch_strings(&["C4", "C#4", "D#4", "G4"], Duration::quarter()).unwrap();
 
         assert_eq!(z15.forte_class(), Some("4-Z15".to_string()));
         assert_eq!(z29.forte_class(), Some("4-Z29".to_string()));
@@ -1052,11 +1063,9 @@ mod tests {
     #[test]
     fn test_chord_forte_class_unsupported_cardinality_is_none() {
         // A 5-note chord isn't covered by the trichord/tetrachord table.
-        let chord = Chord::from_pitch_strings(
-            &["C4", "D4", "E4", "F#4", "G#4"],
-            Duration::quarter(),
-        )
-        .unwrap();
+        let chord =
+            Chord::from_pitch_strings(&["C4", "D4", "E4", "F#4", "G#4"], Duration::quarter())
+                .unwrap();
         assert_eq!(chord.forte_class(), None);
         assert!(!chord.has_z_relation());
     }
@@ -1160,8 +1169,7 @@ mod tests {
         // Entered as a spread first-inversion triad (E in a low octave,
         // G and C much higher) — closed_position should pack everything
         // within an octave of the bass and sort ascending.
-        let spread =
-            Chord::from_pitch_strings(&["E3", "C6", "G5"], Duration::quarter()).unwrap();
+        let spread = Chord::from_pitch_strings(&["E3", "C6", "G5"], Duration::quarter()).unwrap();
         let closed = spread.closed_position();
         let names: Vec<String> = closed.pitches().iter().map(|p| p.name()).collect();
         assert_eq!(names, vec!["E", "G", "C"]);

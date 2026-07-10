@@ -205,7 +205,11 @@ impl Score {
 
     /// Get the number of measures (from the longest part)
     pub fn num_measures(&self) -> usize {
-        self.parts.iter().map(|p| p.num_measures()).max().unwrap_or(0)
+        self.parts
+            .iter()
+            .map(|p| p.num_measures())
+            .max()
+            .unwrap_or(0)
     }
 
     /// Get total duration in quarter lengths
@@ -317,7 +321,11 @@ impl Score {
                 .and_then(|m| m.time_signature())
                 .copied();
 
-            result.add_measure(chordal_reduction_measure(&combined, mi as u32 + 1, time_signature));
+            result.add_measure(chordal_reduction_measure(
+                &combined,
+                mi as u32 + 1,
+                time_signature,
+            ));
         }
 
         result
@@ -366,7 +374,10 @@ fn chordal_reduction_measure(
         if pitches.is_empty() {
             measure.insert(start, MusicElement::Rest(Rest::new(duration)));
         } else {
-            measure.insert(start, MusicElement::Chord(Chord::from_pitches(pitches, duration)));
+            measure.insert(
+                start,
+                MusicElement::Chord(Chord::from_pitches(pitches, duration)),
+            );
         }
     }
 
@@ -559,12 +570,18 @@ mod tests {
         // Unlike chordify (one giant measure), implode keeps 2 measures.
         assert_eq!(imploded.num_measures(), 2);
 
-        let m1_chord = imploded.measure(0).unwrap().elements()[0].1.as_chord().unwrap();
+        let m1_chord = imploded.measure(0).unwrap().elements()[0]
+            .1
+            .as_chord()
+            .unwrap();
         let names1: Vec<String> = m1_chord.pitches().iter().map(|p| p.name()).collect();
         assert!(names1.contains(&"C".to_string()));
         assert!(names1.contains(&"G".to_string()));
 
-        let m2_chord = imploded.measure(1).unwrap().elements()[0].1.as_chord().unwrap();
+        let m2_chord = imploded.measure(1).unwrap().elements()[0]
+            .1
+            .as_chord()
+            .unwrap();
         let names2: Vec<String> = m2_chord.pitches().iter().map(|p| p.name()).collect();
         assert!(names2.contains(&"D".to_string()));
         assert!(names2.contains(&"A".to_string()));

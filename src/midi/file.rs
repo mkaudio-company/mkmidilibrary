@@ -457,7 +457,10 @@ impl MidiFile {
 
     /// Reserve capacity for at least `additional` more events in a track.
     pub fn allocate_events(&mut self, track: usize, additional: usize) -> Result<(), MidiError> {
-        let track = self.tracks.get_mut(track).ok_or(MidiError::TrackOutOfBounds(track))?;
+        let track = self
+            .tracks
+            .get_mut(track)
+            .ok_or(MidiError::TrackOutOfBounds(track))?;
         track.reserve(additional);
         Ok(())
     }
@@ -541,13 +544,21 @@ impl MidiFile {
     /// Convert ticks to seconds
     pub fn ticks_to_seconds(&self, ticks: u64) -> f64 {
         self.build_time_map();
-        self.time_map.borrow().as_ref().unwrap().ticks_to_seconds(ticks)
+        self.time_map
+            .borrow()
+            .as_ref()
+            .unwrap()
+            .ticks_to_seconds(ticks)
     }
 
     /// Convert seconds to ticks
     pub fn seconds_to_ticks(&self, seconds: f64) -> u64 {
         self.build_time_map();
-        self.time_map.borrow().as_ref().unwrap().seconds_to_ticks(seconds)
+        self.time_map
+            .borrow()
+            .as_ref()
+            .unwrap()
+            .seconds_to_ticks(seconds)
     }
 
     /// Build the time map for tempo conversion
@@ -586,7 +597,10 @@ impl MidiFile {
         key: u8,
         velocity: u8,
     ) -> Result<(), MidiError> {
-        let track = self.tracks.get_mut(track).ok_or(MidiError::TrackOutOfBounds(track))?;
+        let track = self
+            .tracks
+            .get_mut(track)
+            .ok_or(MidiError::TrackOutOfBounds(track))?;
         track.add_note(start_tick, duration, channel, key, velocity);
         *self.time_map.borrow_mut() = None;
         Ok(())
@@ -594,7 +608,10 @@ impl MidiFile {
 
     /// Add a tempo change
     pub fn add_tempo(&mut self, track: usize, tick: u64, bpm: f64) -> Result<(), MidiError> {
-        let track = self.tracks.get_mut(track).ok_or(MidiError::TrackOutOfBounds(track))?;
+        let track = self
+            .tracks
+            .get_mut(track)
+            .ok_or(MidiError::TrackOutOfBounds(track))?;
         track.add_tempo(tick, bpm);
         *self.time_map.borrow_mut() = None;
         Ok(())
@@ -608,7 +625,10 @@ impl MidiFile {
         numerator: u8,
         denominator: u8,
     ) -> Result<(), MidiError> {
-        let track = self.tracks.get_mut(track).ok_or(MidiError::TrackOutOfBounds(track))?;
+        let track = self
+            .tracks
+            .get_mut(track)
+            .ok_or(MidiError::TrackOutOfBounds(track))?;
         track.add_time_signature(tick, numerator, denominator);
         *self.time_map.borrow_mut() = None;
         Ok(())
@@ -622,7 +642,10 @@ impl MidiFile {
         numerator: u8,
         denominator: u8,
     ) -> Result<(), MidiError> {
-        let track = self.tracks.get_mut(track).ok_or(MidiError::TrackOutOfBounds(track))?;
+        let track = self
+            .tracks
+            .get_mut(track)
+            .ok_or(MidiError::TrackOutOfBounds(track))?;
         track.add_compound_time_signature(tick, numerator, denominator);
         Ok(())
     }
@@ -635,7 +658,10 @@ impl MidiFile {
         sharps: i8,
         minor: bool,
     ) -> Result<(), MidiError> {
-        let track = self.tracks.get_mut(track).ok_or(MidiError::TrackOutOfBounds(track))?;
+        let track = self
+            .tracks
+            .get_mut(track)
+            .ok_or(MidiError::TrackOutOfBounds(track))?;
         track.add_key_signature(tick, sharps, minor);
         Ok(())
     }
@@ -648,7 +674,10 @@ impl MidiFile {
         channel: u8,
         value: u16,
     ) -> Result<(), MidiError> {
-        let track = self.tracks.get_mut(track).ok_or(MidiError::TrackOutOfBounds(track))?;
+        let track = self
+            .tracks
+            .get_mut(track)
+            .ok_or(MidiError::TrackOutOfBounds(track))?;
         track.add_pitch_bend(tick, channel, value);
         Ok(())
     }
@@ -662,7 +691,10 @@ impl MidiFile {
         controller: u8,
         value: u8,
     ) -> Result<(), MidiError> {
-        let track = self.tracks.get_mut(track).ok_or(MidiError::TrackOutOfBounds(track))?;
+        let track = self
+            .tracks
+            .get_mut(track)
+            .ok_or(MidiError::TrackOutOfBounds(track))?;
         track.add_controller(tick, channel, controller, value);
         Ok(())
     }
@@ -675,18 +707,31 @@ impl MidiFile {
         channel: u8,
         value: u8,
     ) -> Result<(), MidiError> {
-        let track = self.tracks.get_mut(track).ok_or(MidiError::TrackOutOfBounds(track))?;
+        let track = self
+            .tracks
+            .get_mut(track)
+            .ok_or(MidiError::TrackOutOfBounds(track))?;
         track.add_sustain(tick, channel, value);
         Ok(())
     }
 
     /// Add a sustain pedal on event
-    pub fn add_sustain_on(&mut self, track: usize, tick: u64, channel: u8) -> Result<(), MidiError> {
+    pub fn add_sustain_on(
+        &mut self,
+        track: usize,
+        tick: u64,
+        channel: u8,
+    ) -> Result<(), MidiError> {
         self.add_sustain(track, tick, channel, 127)
     }
 
     /// Add a sustain pedal off event
-    pub fn add_sustain_off(&mut self, track: usize, tick: u64, channel: u8) -> Result<(), MidiError> {
+    pub fn add_sustain_off(
+        &mut self,
+        track: usize,
+        tick: u64,
+        channel: u8,
+    ) -> Result<(), MidiError> {
         self.add_sustain(track, tick, channel, 0)
     }
 
@@ -698,7 +743,10 @@ impl MidiFile {
         channel: u8,
         program: u8,
     ) -> Result<(), MidiError> {
-        let track = self.tracks.get_mut(track).ok_or(MidiError::TrackOutOfBounds(track))?;
+        let track = self
+            .tracks
+            .get_mut(track)
+            .ok_or(MidiError::TrackOutOfBounds(track))?;
         track.add_patch_change(tick, channel, program);
         Ok(())
     }
@@ -710,43 +758,81 @@ impl MidiFile {
         tick: u64,
         meta: MetaEvent,
     ) -> Result<(), MidiError> {
-        let track = self.tracks.get_mut(track).ok_or(MidiError::TrackOutOfBounds(track))?;
+        let track = self
+            .tracks
+            .get_mut(track)
+            .ok_or(MidiError::TrackOutOfBounds(track))?;
         track.add_meta_event(tick, meta);
         Ok(())
     }
 
     /// Add a text meta event
-    pub fn add_text(&mut self, track: usize, tick: u64, text: impl Into<String>) -> Result<(), MidiError> {
+    pub fn add_text(
+        &mut self,
+        track: usize,
+        tick: u64,
+        text: impl Into<String>,
+    ) -> Result<(), MidiError> {
         self.add_meta_event(track, tick, MetaEvent::Text(text.into()))
     }
 
     /// Add a copyright meta event
-    pub fn add_copyright(&mut self, track: usize, tick: u64, text: impl Into<String>) -> Result<(), MidiError> {
+    pub fn add_copyright(
+        &mut self,
+        track: usize,
+        tick: u64,
+        text: impl Into<String>,
+    ) -> Result<(), MidiError> {
         self.add_meta_event(track, tick, MetaEvent::Copyright(text.into()))
     }
 
     /// Add a track name meta event
-    pub fn add_track_name(&mut self, track: usize, tick: u64, name: impl Into<String>) -> Result<(), MidiError> {
+    pub fn add_track_name(
+        &mut self,
+        track: usize,
+        tick: u64,
+        name: impl Into<String>,
+    ) -> Result<(), MidiError> {
         self.add_meta_event(track, tick, MetaEvent::TrackName(name.into()))
     }
 
     /// Add an instrument name meta event
-    pub fn add_instrument_name(&mut self, track: usize, tick: u64, name: impl Into<String>) -> Result<(), MidiError> {
+    pub fn add_instrument_name(
+        &mut self,
+        track: usize,
+        tick: u64,
+        name: impl Into<String>,
+    ) -> Result<(), MidiError> {
         self.add_meta_event(track, tick, MetaEvent::InstrumentName(name.into()))
     }
 
     /// Add a lyric meta event
-    pub fn add_lyric(&mut self, track: usize, tick: u64, text: impl Into<String>) -> Result<(), MidiError> {
+    pub fn add_lyric(
+        &mut self,
+        track: usize,
+        tick: u64,
+        text: impl Into<String>,
+    ) -> Result<(), MidiError> {
         self.add_meta_event(track, tick, MetaEvent::Lyric(text.into()))
     }
 
     /// Add a marker meta event
-    pub fn add_marker(&mut self, track: usize, tick: u64, text: impl Into<String>) -> Result<(), MidiError> {
+    pub fn add_marker(
+        &mut self,
+        track: usize,
+        tick: u64,
+        text: impl Into<String>,
+    ) -> Result<(), MidiError> {
         self.add_meta_event(track, tick, MetaEvent::Marker(text.into()))
     }
 
     /// Add a cue point meta event
-    pub fn add_cue(&mut self, track: usize, tick: u64, text: impl Into<String>) -> Result<(), MidiError> {
+    pub fn add_cue(
+        &mut self,
+        track: usize,
+        tick: u64,
+        text: impl Into<String>,
+    ) -> Result<(), MidiError> {
         self.add_meta_event(track, tick, MetaEvent::CuePoint(text.into()))
     }
 
@@ -760,14 +846,20 @@ impl MidiFile {
         semitones: u8,
         cents: u8,
     ) -> Result<(), MidiError> {
-        let track = self.tracks.get_mut(track).ok_or(MidiError::TrackOutOfBounds(track))?;
+        let track = self
+            .tracks
+            .get_mut(track)
+            .ok_or(MidiError::TrackOutOfBounds(track))?;
         track.add_pitch_bend_range(tick, channel, semitones, cents);
         Ok(())
     }
 
     /// Sort a single track with an explicit note-on/off tie-break order.
     pub fn sort_track(&mut self, index: usize, order: NoteSortOrder) -> Result<(), MidiError> {
-        let track = self.tracks.get_mut(index).ok_or(MidiError::TrackOutOfBounds(index))?;
+        let track = self
+            .tracks
+            .get_mut(index)
+            .ok_or(MidiError::TrackOutOfBounds(index))?;
         track.sort_with_order(order);
         *self.time_map.borrow_mut() = None;
         Ok(())
@@ -811,7 +903,12 @@ impl MidiFile {
         let time_map = time_map_ref.as_ref().unwrap();
         let seconds_per_track: Vec<Vec<f64>> = ticks_per_track
             .iter()
-            .map(|ticks| ticks.iter().map(|&t| time_map.ticks_to_seconds(t)).collect())
+            .map(|ticks| {
+                ticks
+                    .iter()
+                    .map(|&t| time_map.ticks_to_seconds(t))
+                    .collect()
+            })
             .collect();
         drop(time_map_ref);
 
@@ -921,10 +1018,7 @@ fn read_u16_be(data: &[u8]) -> u16 {
 }
 
 fn read_u32_be(data: &[u8]) -> u32 {
-    ((data[0] as u32) << 24)
-        | ((data[1] as u32) << 16)
-        | ((data[2] as u32) << 8)
-        | data[3] as u32
+    ((data[0] as u32) << 24) | ((data[1] as u32) << 16) | ((data[2] as u32) << 8) | data[3] as u32
 }
 
 fn read_varlen(data: &[u8]) -> Option<(u32, usize)> {
@@ -1196,12 +1290,18 @@ mod tests {
         let mut merged = MidiTrack::new();
         merged.merge(&track);
         for event in merged.events() {
-            assert!(!event.is_linked(), "merge() must clear stale linked_event indices");
+            assert!(
+                !event.is_linked(),
+                "merge() must clear stale linked_event indices"
+            );
         }
 
         let extracted = track.extract_channel(0);
         for event in extracted.events() {
-            assert!(!event.is_linked(), "extract_channel() must clear stale linked_event indices");
+            assert!(
+                !event.is_linked(),
+                "extract_channel() must clear stale linked_event indices"
+            );
         }
     }
 
@@ -1247,11 +1347,22 @@ mod tests {
         file.merge_two_tracks(0, 2).unwrap();
 
         assert_eq!(file.num_tracks(), 2);
-        let channels: Vec<u8> = file.track(0).unwrap().events().iter().filter_map(|e| e.channel()).collect();
+        let channels: Vec<u8> = file
+            .track(0)
+            .unwrap()
+            .events()
+            .iter()
+            .filter_map(|e| e.channel())
+            .collect();
         assert!(channels.contains(&0));
         assert!(channels.contains(&2));
         // The untouched track (originally index 1) is still present.
-        assert!(file.track(1).unwrap().events().iter().any(|e| e.channel() == Some(1)));
+        assert!(file
+            .track(1)
+            .unwrap()
+            .events()
+            .iter()
+            .any(|e| e.channel() == Some(1)));
     }
 
     #[test]
@@ -1375,7 +1486,10 @@ mod tests {
         assert!((seconds - 60.0 / 90.0).abs() < 0.001);
 
         let ticks = file.seconds_to_ticks(60.0 / 90.0 * 2.0);
-        assert!((ticks as i64 - 960).abs() <= 1, "expected ~960 ticks, got {ticks}");
+        assert!(
+            (ticks as i64 - 960).abs() <= 1,
+            "expected ~960 ticks, got {ticks}"
+        );
     }
 
     #[test]

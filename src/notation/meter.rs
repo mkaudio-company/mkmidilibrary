@@ -581,14 +581,8 @@ mod tests {
         assert_eq!(four_four.get_beat(Fraction::new(1, 1)), 2.0);
         assert_eq!(four_four.get_beat(Fraction::new(3, 2)), 2.5);
 
-        assert_eq!(
-            four_four.get_offset_from_beat(1.0),
-            Fraction::new(0, 1)
-        );
-        assert_eq!(
-            four_four.get_offset_from_beat(3.0),
-            Fraction::new(2, 1)
-        );
+        assert_eq!(four_four.get_offset_from_beat(1.0), Fraction::new(0, 1));
+        assert_eq!(four_four.get_offset_from_beat(3.0), Fraction::new(2, 1));
     }
 
     #[test]

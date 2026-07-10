@@ -70,7 +70,9 @@ const TETRACHORDS: [ForteEntry; 29] = [
 /// canonical forms (which can happen if this crate's own compactness
 /// tie-break for `prime_form` picks a different representative than
 /// Forte's canonical listing for an asymmetric set).
-pub fn forte_class_for_prime_form(prime_form: &[u8]) -> Option<(&'static str, Option<&'static str>)> {
+pub fn forte_class_for_prime_form(
+    prime_form: &[u8],
+) -> Option<(&'static str, Option<&'static str>)> {
     let table: &[ForteEntry] = match prime_form.len() {
         3 => &TRICHORDS,
         4 => &TETRACHORDS,
@@ -88,18 +90,12 @@ mod tests {
 
     #[test]
     fn test_major_triad_forte_class() {
-        assert_eq!(
-            forte_class_for_prime_form(&[0, 3, 7]),
-            Some(("3-11", None))
-        );
+        assert_eq!(forte_class_for_prime_form(&[0, 3, 7]), Some(("3-11", None)));
     }
 
     #[test]
     fn test_diminished_triad_forte_class() {
-        assert_eq!(
-            forte_class_for_prime_form(&[0, 3, 6]),
-            Some(("3-10", None))
-        );
+        assert_eq!(forte_class_for_prime_form(&[0, 3, 6]), Some(("3-10", None)));
     }
 
     #[test]

@@ -103,7 +103,11 @@ mod tests {
         m1.set_time_signature(TimeSignature::new(4, 4));
         m1.insert(
             Fraction::new(0, 1),
-            MusicElement::Chord(Chord::major_triad(Pitch::from_parts(Step::C, Some(4), None))),
+            MusicElement::Chord(Chord::major_triad(Pitch::from_parts(
+                Step::C,
+                Some(4),
+                None,
+            ))),
         );
         part.add_measure(m1);
 

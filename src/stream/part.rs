@@ -258,7 +258,11 @@ impl Part {
     /// Get the clef in effect for the measure at `index`, with the same
     /// backward context search as `time_signature_at`.
     pub fn clef_at(&self, index: usize) -> Option<&Clef> {
-        self.measures.get(..=index)?.iter().rev().find_map(|m| m.clef())
+        self.measures
+            .get(..=index)?
+            .iter()
+            .rev()
+            .find_map(|m| m.clef())
     }
 
     /// Get the actual duration of the measure at `index`, correctly
@@ -322,7 +326,9 @@ impl Part {
     /// inherit their time signature from an earlier measure are counted
     /// correctly instead of silently defaulting to 4/4.
     pub fn duration(&self) -> crate::core::Fraction {
-        (0..self.measures.len()).map(|i| self.measure_duration(i)).sum()
+        (0..self.measures.len())
+            .map(|i| self.measure_duration(i))
+            .sum()
     }
 
     /// Iterate over all notes in the part
@@ -348,7 +354,10 @@ impl Part {
     /// structure yet) into measures of `time_signature`'s bar duration,
     /// producing a new `Part` with that time signature set on its first
     /// measure. Mirrors music21's `Stream.makeMeasures`.
-    pub fn make_measures(elements: &[(Fraction, MusicElement)], time_signature: TimeSignature) -> Part {
+    pub fn make_measures(
+        elements: &[(Fraction, MusicElement)],
+        time_signature: TimeSignature,
+    ) -> Part {
         let bar_duration = time_signature.bar_duration();
         let mut part = Part::new();
 
@@ -428,15 +437,20 @@ impl Part {
                     }
                     let next_bar_duration = self.measure_duration(next_measure);
                     if remaining <= next_bar_duration {
-                        let mut note = Note::new(pitch.clone(), Duration::from_quarter_length(remaining));
+                        let mut note =
+                            Note::new(pitch.clone(), Duration::from_quarter_length(remaining));
                         note.set_tie(Some(Tie::stop()));
-                        self.measures[next_measure].insert(Fraction::new(0, 1), MusicElement::Note(note));
+                        self.measures[next_measure]
+                            .insert(Fraction::new(0, 1), MusicElement::Note(note));
                         break;
                     } else {
-                        let mut note =
-                            Note::new(pitch.clone(), Duration::from_quarter_length(next_bar_duration));
+                        let mut note = Note::new(
+                            pitch.clone(),
+                            Duration::from_quarter_length(next_bar_duration),
+                        );
                         note.set_tie(Some(Tie::new(TieType::Continue)));
-                        self.measures[next_measure].insert(Fraction::new(0, 1), MusicElement::Note(note));
+                        self.measures[next_measure]
+                            .insert(Fraction::new(0, 1), MusicElement::Note(note));
                         remaining -= next_bar_duration;
                         next_measure += 1;
                     }
@@ -495,7 +509,11 @@ impl Part {
         let mut removals: Vec<(u32, Fraction)> = Vec::new();
         for (start, end, total_duration) in merges {
             let first = &recursed[start];
-            if let Some(measure) = self.measures.iter_mut().find(|m| m.number() == first.measure_number) {
+            if let Some(measure) = self
+                .measures
+                .iter_mut()
+                .find(|m| m.number() == first.measure_number)
+            {
                 if let Some((_, MusicElement::Note(note))) = measure
                     .stream_mut()
                     .elements_mut()
@@ -507,13 +525,23 @@ impl Part {
                 }
             }
             for recursed_element in recursed.iter().take(end + 1).skip(start + 1) {
-                removals.push((recursed_element.measure_number, recursed_element.offset_in_measure));
+                removals.push((
+                    recursed_element.measure_number,
+                    recursed_element.offset_in_measure,
+                ));
             }
         }
 
         for (measure_number, offset) in removals {
-            if let Some(measure) = self.measures.iter_mut().find(|m| m.number() == measure_number) {
-                measure.stream_mut().elements_mut().retain(|(o, _)| *o != offset);
+            if let Some(measure) = self
+                .measures
+                .iter_mut()
+                .find(|m| m.number() == measure_number)
+            {
+                measure
+                    .stream_mut()
+                    .elements_mut()
+                    .retain(|(o, _)| *o != offset);
             }
         }
     }
@@ -554,7 +582,11 @@ impl Part {
     /// Locate the note at `(measure_number, offset_in_measure)` and set
     /// its tie, if found (used by `extend_ties`).
     fn set_note_tie(&mut self, measure_number: u32, offset: Fraction, tie: Tie) {
-        if let Some(measure) = self.measures.iter_mut().find(|m| m.number() == measure_number) {
+        if let Some(measure) = self
+            .measures
+            .iter_mut()
+            .find(|m| m.number() == measure_number)
+        {
             if let Some((_, MusicElement::Note(note))) = measure
                 .stream_mut()
                 .elements_mut()
@@ -625,7 +657,12 @@ impl Part {
     /// same measure) later by `element`'s own duration, so nothing
     /// already there gets overwritten or overlapped. Mirrors music21's
     /// `Stream.insertAndShift`.
-    pub fn insert_and_shift(&mut self, measure_index: usize, offset: Fraction, element: MusicElement) {
+    pub fn insert_and_shift(
+        &mut self,
+        measure_index: usize,
+        offset: Fraction,
+        element: MusicElement,
+    ) {
         let Some(measure) = self.measures.get_mut(measure_index) else {
             return;
         };
@@ -767,7 +804,11 @@ impl Part {
                 let mut piece_lengths = Vec::new();
                 let mut remaining = note.quarter_length();
                 while remaining > Fraction::new(0, 1) {
-                    let len = if remaining < quarter_length { remaining } else { quarter_length };
+                    let len = if remaining < quarter_length {
+                        remaining
+                    } else {
+                        quarter_length
+                    };
                     piece_lengths.push(len);
                     remaining -= len;
                 }
@@ -939,7 +980,11 @@ impl Part {
     /// `[start, end)`. Mirrors music21's `Stream.getElementsByOffset`
     /// (the default, non-inclusive-of-`end`, non-`mustBeginInSpan`-only
     /// behavior).
-    pub fn get_elements_by_offset(&self, start: Fraction, end: Fraction) -> Vec<(Fraction, MusicElement)> {
+    pub fn get_elements_by_offset(
+        &self,
+        start: Fraction,
+        end: Fraction,
+    ) -> Vec<(Fraction, MusicElement)> {
         self.flatten()
             .into_iter()
             .filter(|(offset, _)| *offset >= start && *offset < end)
@@ -1032,7 +1077,8 @@ impl Part {
             for (offset, element) in measure.elements() {
                 match element {
                     MusicElement::Chord(chord) => {
-                        let mut pitches: Vec<Pitch> = chord.pitches().into_iter().cloned().collect();
+                        let mut pitches: Vec<Pitch> =
+                            chord.pitches().into_iter().cloned().collect();
                         pitches.sort_by(|a, b| b.cmp(a));
                         for (vi, pitch) in pitches.into_iter().enumerate() {
                             if let Some(part_measure) = result[vi].measures.get_mut(mi) {
@@ -1065,7 +1111,11 @@ impl Part {
         // should be numbered 1, 2, 3, ... (i.e. `i` itself); without a
         // pickup, they should be 1, 2, 3, ... starting from index 0 (i.e.
         // `i + 1`).
-        let has_pickup = self.measures.first().map(|m| m.is_pickup()).unwrap_or(false);
+        let has_pickup = self
+            .measures
+            .first()
+            .map(|m| m.is_pickup())
+            .unwrap_or(false);
 
         for (i, measure) in self.measures.iter_mut().enumerate() {
             let number = if has_pickup { i as u32 } else { i as u32 + 1 };
@@ -1343,7 +1393,11 @@ mod tests {
         m1.insert(Fraction::new(1, 1), MusicElement::Rest(Rest::quarter()));
         m1.insert(
             Fraction::new(2, 1),
-            MusicElement::Chord(Chord::major_triad(Pitch::from_parts(Step::C, Some(4), None))),
+            MusicElement::Chord(Chord::major_triad(Pitch::from_parts(
+                Step::C,
+                Some(4),
+                None,
+            ))),
         );
         part.add_measure(m1);
 
@@ -1398,7 +1452,11 @@ mod tests {
         );
         m1.insert(
             Fraction::new(1, 1),
-            MusicElement::Chord(Chord::major_triad(Pitch::from_parts(Step::C, Some(4), None))),
+            MusicElement::Chord(Chord::major_triad(Pitch::from_parts(
+                Step::C,
+                Some(4),
+                None,
+            ))),
         );
         m1.insert(Fraction::new(2, 1), MusicElement::Rest(Rest::quarter()));
         part.add_measure(m1);
@@ -1415,7 +1473,12 @@ mod tests {
 
         // Original part is untouched.
         assert_eq!(
-            part.measure(0).unwrap().elements()[0].1.as_note().unwrap().pitch().name(),
+            part.measure(0).unwrap().elements()[0]
+                .1
+                .as_note()
+                .unwrap()
+                .pitch()
+                .name(),
             "C"
         );
     }
@@ -1485,10 +1548,19 @@ mod tests {
         let elements = part.measure(0).unwrap().elements().to_vec();
         assert_eq!(elements.len(), 4); // 2 quarters / 0.5 = 4 pieces
         assert_eq!(elements[0].0, Fraction::new(0, 1));
-        assert_eq!(elements[0].1.as_note().unwrap().tie().unwrap().type_, TieType::Start);
-        assert_eq!(elements[1].1.as_note().unwrap().tie().unwrap().type_, TieType::Continue);
+        assert_eq!(
+            elements[0].1.as_note().unwrap().tie().unwrap().type_,
+            TieType::Start
+        );
+        assert_eq!(
+            elements[1].1.as_note().unwrap().tie().unwrap().type_,
+            TieType::Continue
+        );
         assert_eq!(elements[3].0, Fraction::new(3, 2));
-        assert_eq!(elements[3].1.as_note().unwrap().tie().unwrap().type_, TieType::Stop);
+        assert_eq!(
+            elements[3].1.as_note().unwrap().tie().unwrap().type_,
+            TieType::Stop
+        );
     }
 
     #[test]
@@ -1498,7 +1570,7 @@ mod tests {
         let mut part = Part::new();
         let mut m1 = Measure::new(1);
         m1.set_time_signature(TimeSignature::new(4, 4)); // beats at 0,1,2,3
-        // A note from offset 0.5 to 1.5 crosses the beat boundary at 1.
+                                                         // A note from offset 0.5 to 1.5 crosses the beat boundary at 1.
         m1.insert(
             Fraction::new(1, 2),
             MusicElement::Note(Note::new(
@@ -1513,11 +1585,23 @@ mod tests {
         let elements = part.measure(0).unwrap().elements().to_vec();
         assert_eq!(elements.len(), 2);
         assert_eq!(elements[0].0, Fraction::new(1, 2));
-        assert_eq!(elements[0].1.as_note().unwrap().quarter_length(), Fraction::new(1, 2));
-        assert_eq!(elements[0].1.as_note().unwrap().tie().unwrap().type_, TieType::Start);
+        assert_eq!(
+            elements[0].1.as_note().unwrap().quarter_length(),
+            Fraction::new(1, 2)
+        );
+        assert_eq!(
+            elements[0].1.as_note().unwrap().tie().unwrap().type_,
+            TieType::Start
+        );
         assert_eq!(elements[1].0, Fraction::new(1, 1));
-        assert_eq!(elements[1].1.as_note().unwrap().quarter_length(), Fraction::new(1, 2));
-        assert_eq!(elements[1].1.as_note().unwrap().tie().unwrap().type_, TieType::Stop);
+        assert_eq!(
+            elements[1].1.as_note().unwrap().quarter_length(),
+            Fraction::new(1, 2)
+        );
+        assert_eq!(
+            elements[1].1.as_note().unwrap().tie().unwrap().type_,
+            TieType::Stop
+        );
     }
 
     #[test]
@@ -1539,9 +1623,18 @@ mod tests {
 
         let elements = part.measure(0).unwrap().elements().to_vec();
         assert_eq!(elements.len(), 3);
-        assert_eq!(elements[0].1.as_note().unwrap().quarter_length(), Fraction::new(1, 1));
-        assert_eq!(elements[1].1.as_note().unwrap().quarter_length(), Fraction::new(2, 1));
-        assert_eq!(elements[2].1.as_note().unwrap().quarter_length(), Fraction::new(1, 1));
+        assert_eq!(
+            elements[0].1.as_note().unwrap().quarter_length(),
+            Fraction::new(1, 1)
+        );
+        assert_eq!(
+            elements[1].1.as_note().unwrap().quarter_length(),
+            Fraction::new(2, 1)
+        );
+        assert_eq!(
+            elements[2].1.as_note().unwrap().quarter_length(),
+            Fraction::new(1, 1)
+        );
     }
 
     #[test]
@@ -1609,8 +1702,8 @@ mod tests {
         let mut part = Part::new();
         let mut m1 = Measure::new(1);
         m1.set_key_signature(KeySignature::g_major()); // F# implied
-        // F# matches the key signature (shouldn't need display); F
-        // natural contradicts it (must be displayed).
+                                                       // F# matches the key signature (shouldn't need display); F
+                                                       // natural contradicts it (must be displayed).
         m1.insert(
             Fraction::new(0, 1),
             MusicElement::Note(Note::quarter(Pitch::from_parts(
@@ -1649,7 +1742,12 @@ mod tests {
         let info = part.make_notation();
 
         // make_ties should have split the overflowing half note.
-        assert!(part.measure(0).unwrap().elements()[0].1.as_note().unwrap().tie().is_some());
+        assert!(part.measure(0).unwrap().elements()[0]
+            .1
+            .as_note()
+            .unwrap()
+            .tie()
+            .is_some());
         assert_eq!(info.len(), 2);
     }
 
@@ -1660,7 +1758,7 @@ mod tests {
         let mut part = Part::new();
         let mut m1 = Measure::new(1);
         m1.set_time_signature(TimeSignature::new(2, 4)); // only 2 quarters
-        // A half note (2 quarters) at offset 1 overflows by 1 quarter.
+                                                         // A half note (2 quarters) at offset 1 overflows by 1 quarter.
         m1.insert(
             Fraction::new(1, 1),
             MusicElement::Note(Note::half(Pitch::from_parts(Step::C, Some(4), None))),
@@ -1817,7 +1915,10 @@ mod tests {
         // The 5th note (absolute offset 4) must land at local offset 0
         // in measure 2, not absolute offset 4 (which measure 2's own
         // Stream has no notion of).
-        assert_eq!(part.measure(1).unwrap().elements()[0].0, Fraction::new(0, 1));
+        assert_eq!(
+            part.measure(1).unwrap().elements()[0].0,
+            Fraction::new(0, 1)
+        );
     }
 
     #[test]
@@ -1929,7 +2030,9 @@ mod tests {
         let at_or_before = part.get_element_at_or_before(Fraction::new(3, 1)).unwrap();
         assert_eq!(at_or_before.0, Fraction::new(2, 1));
 
-        assert!(part.get_element_at_or_before(Fraction::new(-1, 1)).is_none());
+        assert!(part
+            .get_element_at_or_before(Fraction::new(-1, 1))
+            .is_none());
     }
 
     #[test]
@@ -2021,8 +2124,14 @@ mod tests {
         // Part 0 gets the highest pitch (G) at offset 0, plus the lone note at offset 1.
         assert_eq!(m0.elements()[0].1.as_note().unwrap().pitch().name(), "G");
         assert_eq!(m0.elements().len(), 2);
-        assert_eq!(m1_out.elements()[0].1.as_note().unwrap().pitch().name(), "E");
-        assert_eq!(m2_out.elements()[0].1.as_note().unwrap().pitch().name(), "C");
+        assert_eq!(
+            m1_out.elements()[0].1.as_note().unwrap().pitch().name(),
+            "E"
+        );
+        assert_eq!(
+            m2_out.elements()[0].1.as_note().unwrap().pitch().name(),
+            "C"
+        );
     }
 
     #[test]
@@ -2044,14 +2153,35 @@ mod tests {
         assert_eq!(parts.len(), 2);
         assert_eq!(parts[0].name(), Some("Voice 1"));
         assert_eq!(
-            parts[1].measure(0).unwrap().elements()[0].1.as_note().unwrap().pitch().name(),
+            parts[1].measure(0).unwrap().elements()[0]
+                .1
+                .as_note()
+                .unwrap()
+                .pitch()
+                .name(),
             "E"
         );
 
         let voices_back = parts_to_voices(&[&parts[0], &parts[1]]);
         assert_eq!(voices_back.len(), 2);
-        assert_eq!(voices_back[0].elements()[0].1.as_note().unwrap().pitch().name(), "C");
-        assert_eq!(voices_back[1].elements()[0].1.as_note().unwrap().pitch().name(), "E");
+        assert_eq!(
+            voices_back[0].elements()[0]
+                .1
+                .as_note()
+                .unwrap()
+                .pitch()
+                .name(),
+            "C"
+        );
+        assert_eq!(
+            voices_back[1].elements()[0]
+                .1
+                .as_note()
+                .unwrap()
+                .pitch()
+                .name(),
+            "E"
+        );
     }
 
     #[test]
@@ -2079,16 +2209,28 @@ mod tests {
         let mut part = Part::new();
         let mut m1 = Measure::new(1);
         m1.set_repeat_start(true);
-        m1.append(MusicElement::Note(Note::quarter(Pitch::from_parts(Step::C, Some(4), None))));
+        m1.append(MusicElement::Note(Note::quarter(Pitch::from_parts(
+            Step::C,
+            Some(4),
+            None,
+        ))));
         part.add_measure(m1);
 
         let mut m2 = Measure::new(2);
         m2.set_repeat_end(true);
-        m2.append(MusicElement::Note(Note::quarter(Pitch::from_parts(Step::D, Some(4), None))));
+        m2.append(MusicElement::Note(Note::quarter(Pitch::from_parts(
+            Step::D,
+            Some(4),
+            None,
+        ))));
         part.add_measure(m2);
 
         let mut m3 = Measure::new(3);
-        m3.append(MusicElement::Note(Note::quarter(Pitch::from_parts(Step::E, Some(4), None))));
+        m3.append(MusicElement::Note(Note::quarter(Pitch::from_parts(
+            Step::E,
+            Some(4),
+            None,
+        ))));
         part.add_measure(m3);
 
         let expanded = part.expand_repeats();
@@ -2118,7 +2260,11 @@ mod tests {
 
         let mut part = Part::new();
         let mut m1 = Measure::new(1);
-        m1.append(MusicElement::Note(Note::quarter(Pitch::from_parts(Step::C, Some(4), None))));
+        m1.append(MusicElement::Note(Note::quarter(Pitch::from_parts(
+            Step::C,
+            Some(4),
+            None,
+        ))));
         part.add_measure(m1);
 
         let expanded = part.expand_repeats();
@@ -2132,8 +2278,16 @@ mod tests {
 
         let mut part = Part::new();
         let mut m1 = Measure::new(1);
-        m1.append(MusicElement::Note(Note::quarter(Pitch::from_parts(Step::C, Some(4), None))));
-        m1.append(MusicElement::Note(Note::quarter(Pitch::from_parts(Step::G, Some(5), None))));
+        m1.append(MusicElement::Note(Note::quarter(Pitch::from_parts(
+            Step::C,
+            Some(4),
+            None,
+        ))));
+        m1.append(MusicElement::Note(Note::quarter(Pitch::from_parts(
+            Step::G,
+            Some(5),
+            None,
+        ))));
         part.add_measure(m1);
 
         match part.analyze("ambitus").unwrap() {

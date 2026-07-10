@@ -278,7 +278,8 @@ impl Dynamics {
 
     /// Get the velocity
     pub fn velocity(&self) -> u8 {
-        self.velocity_override.unwrap_or_else(|| self.type_.velocity())
+        self.velocity_override
+            .unwrap_or_else(|| self.type_.velocity())
     }
 
     /// Set custom velocity
@@ -430,7 +431,10 @@ impl DynamicWedge {
                     return Some(s.velocity());
                 }
                 let t = ((pos_offset - start_offset) / (end_offset - start_offset)).clamp(0.0, 1.0);
-                Some((s.velocity() as f64 + (e.velocity() as f64 - s.velocity() as f64) * t).round() as u8)
+                Some(
+                    (s.velocity() as f64 + (e.velocity() as f64 - s.velocity() as f64) * t).round()
+                        as u8,
+                )
             }
         }
     }

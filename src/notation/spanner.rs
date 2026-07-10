@@ -171,6 +171,9 @@ mod tests {
     #[test]
     #[should_panic(expected = "must not come before its start")]
     fn test_spanner_rejects_end_before_start() {
-        Spanner::new(SpannerAnchor::start_of_measure(5), SpannerAnchor::start_of_measure(1));
+        Spanner::new(
+            SpannerAnchor::start_of_measure(5),
+            SpannerAnchor::start_of_measure(1),
+        );
     }
 }

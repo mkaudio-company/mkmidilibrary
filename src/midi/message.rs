@@ -9,23 +9,11 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MidiMessage {
     /// Note Off event (key released)
-    NoteOff {
-        channel: u8,
-        key: u8,
-        velocity: u8,
-    },
+    NoteOff { channel: u8, key: u8, velocity: u8 },
     /// Note On event (key pressed)
-    NoteOn {
-        channel: u8,
-        key: u8,
-        velocity: u8,
-    },
+    NoteOn { channel: u8, key: u8, velocity: u8 },
     /// Polyphonic key pressure (aftertouch per note)
-    PolyPressure {
-        channel: u8,
-        key: u8,
-        pressure: u8,
-    },
+    PolyPressure { channel: u8, key: u8, pressure: u8 },
     /// Control change
     ControlChange {
         channel: u8,
@@ -33,15 +21,9 @@ pub enum MidiMessage {
         value: u8,
     },
     /// Program change (instrument selection)
-    ProgramChange {
-        channel: u8,
-        program: u8,
-    },
+    ProgramChange { channel: u8, program: u8 },
     /// Channel pressure (aftertouch for whole channel)
-    ChannelPressure {
-        channel: u8,
-        pressure: u8,
-    },
+    ChannelPressure { channel: u8, pressure: u8 },
     /// Pitch bend
     PitchBend {
         channel: u8,
@@ -222,7 +204,10 @@ impl MidiMessage {
     /// Check if this is a note on or note off message (velocity-0 note-on
     /// counts as a note off, per `is_note_off`).
     pub fn is_note(&self) -> bool {
-        matches!(self, MidiMessage::NoteOn { .. } | MidiMessage::NoteOff { .. })
+        matches!(
+            self,
+            MidiMessage::NoteOn { .. } | MidiMessage::NoteOff { .. }
+        )
     }
 
     /// Check if this is a control change message
@@ -465,9 +450,8 @@ impl MidiMessage {
                     // Could be system reset or meta event
                     if data.len() >= 2 && data[1] < 0x80 {
                         // Meta event
-                        MetaEvent::from_bytes(&data[1..]).map(|(meta, len)| {
-                            (MidiMessage::Meta(meta), len + 1)
-                        })
+                        MetaEvent::from_bytes(&data[1..])
+                            .map(|(meta, len)| (MidiMessage::Meta(meta), len + 1))
                     } else {
                         Some((MidiMessage::SystemReset, 1))
                     }

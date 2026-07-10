@@ -102,7 +102,9 @@ impl DurationType {
             return Some(DurationType::Zero);
         }
 
-        ALL_DURATION_TYPES.into_iter().find(|&t| t.quarter_length() == ql)
+        ALL_DURATION_TYPES
+            .into_iter()
+            .find(|&t| t.quarter_length() == ql)
     }
 
     /// Get the standard name
@@ -127,7 +129,6 @@ impl DurationType {
             DurationType::Zero => "zero",
         }
     }
-
 }
 
 impl std::str::FromStr for DurationType {
@@ -807,8 +808,14 @@ mod tests {
             Fraction::new(64, 1)
         );
         assert_eq!(DurationType::N512th.quarter_length(), Fraction::new(1, 128));
-        assert_eq!(DurationType::N1024th.quarter_length(), Fraction::new(1, 256));
-        assert_eq!(DurationType::N2048th.quarter_length(), Fraction::new(1, 512));
+        assert_eq!(
+            DurationType::N1024th.quarter_length(),
+            Fraction::new(1, 256)
+        );
+        assert_eq!(
+            DurationType::N2048th.quarter_length(),
+            Fraction::new(1, 512)
+        );
         assert_eq!(
             DurationType::from_str("512th").unwrap(),
             DurationType::N512th
@@ -857,7 +864,10 @@ mod tests {
         // The last component's start time plus its length must equal the total.
         let last_index = comps.len() - 1;
         let last_start = d.component_start_time(last_index).unwrap();
-        assert_eq!(last_start + comps[last_index].quarter_length(), Fraction::new(5, 4));
+        assert_eq!(
+            last_start + comps[last_index].quarter_length(),
+            Fraction::new(5, 4)
+        );
 
         // Out of range position/index return None.
         assert_eq!(d.component_index_at_qtr_position(Fraction::new(5, 4)), None);

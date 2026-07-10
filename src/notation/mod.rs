@@ -19,10 +19,14 @@ mod scale;
 mod spanner;
 mod tempo;
 
-pub use articulation::{ArticulationMark, ArticulationPlacement, HammerPullSpanner, HammerPullType};
+pub use articulation::{
+    ArticulationMark, ArticulationPlacement, HammerPullSpanner, HammerPullType,
+};
 pub use beam::{compute_beams, Beam, BeamType};
 pub use clef::{Clef, ClefSign};
-pub use dynamics::{dynamic_str_from_decimal, DynamicWedge, DynamicWedgeType, Dynamics, DynamicsType};
+pub use dynamics::{
+    dynamic_str_from_decimal, DynamicWedge, DynamicWedgeType, Dynamics, DynamicsType,
+};
 pub use expressions::{
     ArpeggioDirection, ArpeggioMark, Ornament, OrnamentKind, OrnamentSize, PedalMark,
     RehearsalMark, TextExpression, TremoloSpanner, TrillExtension, TurnDelay,

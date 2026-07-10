@@ -284,11 +284,7 @@ impl Interval {
 
     /// Get the full name (e.g., "major third", "perfect fifth")
     pub fn full_name(&self) -> String {
-        let direction = if self.generic < 0 {
-            "descending "
-        } else {
-            ""
-        };
+        let direction = if self.generic < 0 { "descending " } else { "" };
         let generic_num = self.generic.abs() + 1;
         let generic_name = match generic_num {
             1 => "unison",
@@ -348,7 +344,10 @@ impl Interval {
 
     /// Add two intervals
     pub fn add(&self, other: &Interval) -> Interval {
-        Interval::new(self.generic + other.generic, self.semitones + other.semitones)
+        Interval::new(
+            self.generic + other.generic,
+            self.semitones + other.semitones,
+        )
     }
 
     /// Check if this interval is consonant
@@ -502,7 +501,11 @@ impl Interval {
     /// Abbreviated name using the simple (octave-reduced) generic size,
     /// e.g. a compound major 9th reports as "M2" rather than "M9".
     pub fn simple_name(&self) -> String {
-        format!("{}{}", self.quality().abbreviation(), self.simple_undirected())
+        format!(
+            "{}{}",
+            self.quality().abbreviation(),
+            self.simple_undirected()
+        )
     }
 
     /// Full name using the simple (octave-reduced) generic size, e.g. a
@@ -591,7 +594,9 @@ pub fn notes_to_interval(n1: &Note, n2: &Note) -> Interval {
 
 /// Sum a list of intervals.
 pub fn add(intervals: &[Interval]) -> Interval {
-    intervals.iter().fold(Interval::unison(), |acc, i| acc.add(i))
+    intervals
+        .iter()
+        .fold(Interval::unison(), |acc, i| acc.add(i))
 }
 
 /// Cumulatively subtract each interval after the first from the first

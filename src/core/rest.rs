@@ -135,7 +135,10 @@ impl Rest {
     /// use `is_full_measure_in_context` when a measure duration is
     /// available to correctly resolve `Auto`.
     pub fn is_full_measure(&self) -> bool {
-        matches!(self.full_measure, FullMeasureRest::True | FullMeasureRest::Always)
+        matches!(
+            self.full_measure,
+            FullMeasureRest::True | FullMeasureRest::Always
+        )
     }
 
     /// Set whether this is an explicitly full-measure rest (`True`/`False`).

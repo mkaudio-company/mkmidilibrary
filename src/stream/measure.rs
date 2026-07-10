@@ -335,7 +335,12 @@ impl Default for Measure {
 
 impl fmt::Display for Measure {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Measure {} ({} elements)", self.measure_number_string(), self.len())
+        write!(
+            f,
+            "Measure {} ({} elements)",
+            self.measure_number_string(),
+            self.len()
+        )
     }
 }
 
@@ -421,7 +426,10 @@ mod tests {
             Some(4),
             None,
         ))));
-        assert_eq!(whole_quarters.best_time_signature(), TimeSignature::new(3, 4));
+        assert_eq!(
+            whole_quarters.best_time_signature(),
+            TimeSignature::new(3, 4)
+        );
 
         let mut with_eighth = Measure::new(1);
         with_eighth.append(MusicElement::Note(Note::quarter(Pitch::from_parts(
@@ -436,7 +444,10 @@ mod tests {
         ))));
         assert_eq!(with_eighth.best_time_signature(), TimeSignature::new(3, 8));
 
-        assert_eq!(Measure::new(1).best_time_signature(), TimeSignature::common_time());
+        assert_eq!(
+            Measure::new(1).best_time_signature(),
+            TimeSignature::common_time()
+        );
     }
 
     #[test]

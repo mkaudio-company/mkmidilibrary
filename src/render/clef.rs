@@ -5,8 +5,8 @@ use std::any::Any;
 use mkgraphic::prelude::*;
 use mkgraphic::support::canvas::Canvas;
 
-use super::{STAFF_SPACE, STAFF_HEIGHT};
 use super::config::RenderConfig;
+use super::{STAFF_HEIGHT, STAFF_SPACE};
 use crate::notation::{Clef, ClefSign};
 
 /// A graphical element representing a clef

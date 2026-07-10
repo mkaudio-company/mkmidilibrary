@@ -13,8 +13,8 @@ mod reduce_chords;
 
 pub use chord_analysis::{roman_numeral_from_chord, ChordAnalyzer, ChordQuality, RomanNumeral};
 pub use discrete::{
-    analyze_part, analyze_part_with_certainty, find_key, pitch_class_distribution,
-    tonal_certainty, KeyAnalysisResult, KeyFindingAlgorithm,
+    analyze_part, analyze_part_with_certainty, find_key, pitch_class_distribution, tonal_certainty,
+    KeyAnalysisResult, KeyFindingAlgorithm,
 };
 pub use floating_key::{analyze_floating_key, detect_modulations, WindowedKeyResult};
 pub use melody::{ambitus, melodic_interval_diversity};
@@ -32,7 +32,10 @@ pub enum PartAnalysisResult {
 /// method name to the matching analysis routine. Mirrors music21's
 /// `Stream.analyze` dispatcher for the analyses implemented in this
 /// crate (`"key"`, `"ambitus"`/`"range"`, `"melodicIntervalDiversity"`).
-pub fn analyze_part_by_method(part: &crate::stream::Part, method: &str) -> Option<PartAnalysisResult> {
+pub fn analyze_part_by_method(
+    part: &crate::stream::Part,
+    method: &str,
+) -> Option<PartAnalysisResult> {
     match method {
         "key" => Some(PartAnalysisResult::Key(analyze_part(
             part,

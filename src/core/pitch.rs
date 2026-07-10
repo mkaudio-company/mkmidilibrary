@@ -722,7 +722,9 @@ impl FromStr for Pitch {
         let mut chars = s.chars().peekable();
 
         // Parse step
-        let step_char = chars.next().ok_or_else(|| ParseError::InvalidPitch(s.to_string()))?;
+        let step_char = chars
+            .next()
+            .ok_or_else(|| ParseError::InvalidPitch(s.to_string()))?;
         let step = Step::from_str(&step_char.to_string())?;
 
         // Parse accidental
@@ -802,7 +804,9 @@ impl PartialOrd for Pitch {
 impl Ord for Pitch {
     fn cmp(&self, other: &Self) -> Ordering {
         // Ordering based on pitch space (enharmonic equivalents are equal in ordering)
-        self.ps().partial_cmp(&other.ps()).unwrap_or(Ordering::Equal)
+        self.ps()
+            .partial_cmp(&other.ps())
+            .unwrap_or(Ordering::Equal)
     }
 }
 

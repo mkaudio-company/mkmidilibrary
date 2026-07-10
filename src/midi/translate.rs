@@ -237,9 +237,11 @@ impl MidiToScore {
 
         for event in track.events() {
             if event.is_note_on() {
-                if let (Some(key), Some(vel), Some(duration)) =
-                    (event.key(), event.velocity(), event.tick_duration(track.events()))
-                {
+                if let (Some(key), Some(vel), Some(duration)) = (
+                    event.key(),
+                    event.velocity(),
+                    event.tick_duration(track.events()),
+                ) {
                     notes.push((event.tick(), duration, key, vel));
                 }
             }
@@ -334,21 +336,12 @@ mod tests {
         let converter = ScoreToMidi::new().with_ticks_per_quarter(480);
 
         // Quarter note = 480 ticks
-        assert_eq!(
-            converter.fraction_to_ticks(Fraction::new(1, 1)),
-            480
-        );
+        assert_eq!(converter.fraction_to_ticks(Fraction::new(1, 1)), 480);
 
         // Half note = 960 ticks
-        assert_eq!(
-            converter.fraction_to_ticks(Fraction::new(2, 1)),
-            960
-        );
+        assert_eq!(converter.fraction_to_ticks(Fraction::new(2, 1)), 960);
 
         // Eighth note = 240 ticks
-        assert_eq!(
-            converter.fraction_to_ticks(Fraction::new(1, 2)),
-            240
-        );
+        assert_eq!(converter.fraction_to_ticks(Fraction::new(1, 2)), 240);
     }
 }

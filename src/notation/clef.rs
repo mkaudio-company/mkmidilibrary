@@ -295,7 +295,11 @@ impl Clef {
         match self.sign {
             ClefSign::G => 4, // G
             ClefSign::F => 3, // F
-            ClefSign::C | ClefSign::Percussion | ClefSign::Tab | ClefSign::None | ClefSign::Jianpu => 0, // C
+            ClefSign::C
+            | ClefSign::Percussion
+            | ClefSign::Tab
+            | ClefSign::None
+            | ClefSign::Jianpu => 0, // C
         }
     }
 
@@ -322,7 +326,8 @@ impl Clef {
         // reference pitch's own scale degree (and the "C" pitch that sits
         // in the same octave as it) makes every clef consistent.
         let reference_degree = self.reference_degree();
-        let c_in_reference_octave = self.reference_pitch() as i32 - semitones_from_c[reference_degree as usize];
+        let c_in_reference_octave =
+            self.reference_pitch() as i32 - semitones_from_c[reference_degree as usize];
 
         let total_degree = reference_degree + steps;
         let octave_shift = total_degree.div_euclid(7);
@@ -422,8 +427,14 @@ mod tests {
         assert_eq!(Clef::from_string("treble"), Some(Clef::treble()));
         assert_eq!(Clef::from_string("Bass"), Some(Clef::bass()));
         assert_eq!(Clef::from_string("ALTO"), Some(Clef::alto()));
-        assert_eq!(Clef::from_string("mezzo-soprano"), Some(Clef::mezzo_soprano()));
-        assert_eq!(Clef::from_string("french violin"), Some(Clef::french_violin()));
+        assert_eq!(
+            Clef::from_string("mezzo-soprano"),
+            Some(Clef::mezzo_soprano())
+        );
+        assert_eq!(
+            Clef::from_string("french violin"),
+            Some(Clef::french_violin())
+        );
         assert_eq!(Clef::from_string("sub-bass"), Some(Clef::sub_bass()));
         assert_eq!(Clef::from_string("none"), Some(Clef::no_clef()));
         assert_eq!(Clef::from_string("jianpu"), Some(Clef::jianpu()));
@@ -457,14 +468,20 @@ mod tests {
 
     #[test]
     fn test_stem_direction_for_pitches() {
-        use crate::core::{Pitch, Step, StemDirection};
+        use crate::core::{Pitch, StemDirection, Step};
         let treble = Clef::treble();
 
         let low_note = vec![Pitch::from_parts(Step::C, Some(4), None)];
-        assert_eq!(treble.stem_direction_for_pitches(&low_note), StemDirection::Up);
+        assert_eq!(
+            treble.stem_direction_for_pitches(&low_note),
+            StemDirection::Up
+        );
 
         let high_note = vec![Pitch::from_parts(Step::C, Some(6), None)];
-        assert_eq!(treble.stem_direction_for_pitches(&high_note), StemDirection::Down);
+        assert_eq!(
+            treble.stem_direction_for_pitches(&high_note),
+            StemDirection::Down
+        );
     }
 
     #[test]

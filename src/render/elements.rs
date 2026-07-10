@@ -99,9 +99,8 @@ impl ScoreElement {
             + config.margin_right;
 
         let staff_with_spacing = config.staff.height + config.staff_spacing;
-        let height = config.margin_top
-            + (num_parts as f32 * staff_with_spacing)
-            + config.margin_bottom;
+        let height =
+            config.margin_top + (num_parts as f32 * staff_with_spacing) + config.margin_bottom;
 
         Self {
             parts_data,
@@ -146,8 +145,10 @@ impl ScoreElement {
             clef_element.draw_to_canvas(canvas, config);
 
             // Draw measures
-            let measure_start_x =
-                config.margin_left + config.clef_width + config.key_sig_width + config.time_sig_width;
+            let measure_start_x = config.margin_left
+                + config.clef_width
+                + config.key_sig_width
+                + config.time_sig_width;
 
             for (measure_idx, measure_data) in part.measures.iter().enumerate() {
                 let measure_x = measure_start_x + (measure_idx as f32 * config.measure_width);

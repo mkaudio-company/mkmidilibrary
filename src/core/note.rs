@@ -608,7 +608,10 @@ impl Volume {
             .iter()
             .map(|a| a.type_.velocity_multiplier())
             .product();
-        let shift: i32 = articulations.iter().map(|a| a.type_.volume_shift() as i32).sum();
+        let shift: i32 = articulations
+            .iter()
+            .map(|a| a.type_.volume_shift() as i32)
+            .sum();
         let shifted = (self.velocity as f64 * multiplier).round() as i32 + shift;
         Volume::from_velocity(shifted.clamp(0, 127) as u8)
     }

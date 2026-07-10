@@ -1,6 +1,6 @@
 //! Rendering configuration
 
-use super::{STAFF_SPACE, STAFF_HEIGHT};
+use super::{STAFF_HEIGHT, STAFF_SPACE};
 
 /// Staff rendering configuration
 #[derive(Debug, Clone)]

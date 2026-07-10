@@ -293,14 +293,7 @@ impl MidiTrack {
     }
 
     /// Add a note (creates note on and note off events)
-    pub fn add_note(
-        &mut self,
-        start_tick: u64,
-        duration: u64,
-        channel: u8,
-        key: u8,
-        velocity: u8,
-    ) {
+    pub fn add_note(&mut self, start_tick: u64, duration: u64, channel: u8, key: u8, velocity: u8) {
         let on_idx = self.events.len();
         let mut on_event = MidiEvent::note_on(start_tick, channel, key, velocity);
         let mut off_event = MidiEvent::note_off(start_tick + duration, channel, key, 0);
@@ -350,7 +343,10 @@ impl MidiTrack {
 
     /// Add a pitch bend event
     pub fn add_pitch_bend(&mut self, tick: u64, channel: u8, value: u16) {
-        self.add_event(MidiEvent::new(tick, MidiMessage::pitch_bend(channel, value)));
+        self.add_event(MidiEvent::new(
+            tick,
+            MidiMessage::pitch_bend(channel, value),
+        ));
     }
 
     /// Add a controller (control change) event
@@ -360,7 +356,10 @@ impl MidiTrack {
 
     /// Add a sustain pedal event with an explicit value
     pub fn add_sustain(&mut self, tick: u64, channel: u8, value: u8) {
-        self.add_event(MidiEvent::new(tick, MidiMessage::make_sustain(channel, value)));
+        self.add_event(MidiEvent::new(
+            tick,
+            MidiMessage::make_sustain(channel, value),
+        ));
     }
 
     /// Add a sustain pedal on event
@@ -444,13 +443,7 @@ impl MidiTrack {
     /// sequence: select RPN 0 via CC 101/100, then set the value via CC 6/38,
     /// then deselect the RPN (CC 101/100 = 127/127) so subsequent data-entry
     /// messages don't accidentally alter it.
-    pub fn add_pitch_bend_range(
-        &mut self,
-        tick: u64,
-        channel: u8,
-        semitones: u8,
-        cents: u8,
-    ) {
+    pub fn add_pitch_bend_range(&mut self, tick: u64, channel: u8, semitones: u8, cents: u8) {
         self.add_controller(tick, channel, 101, 0); // RPN MSB = 0
         self.add_controller(tick, channel, 100, 0); // RPN LSB = 0 (pitch bend range)
         self.add_controller(tick, channel, 6, semitones.min(127)); // Data entry MSB
@@ -470,12 +463,10 @@ impl MidiTrack {
 
     /// Ensure the track has an end of track marker
     pub fn ensure_end_of_track(&mut self) {
-        let has_eot = self.events.iter().any(|e| {
-            matches!(
-                e.message(),
-                MidiMessage::Meta(MetaEvent::EndOfTrack)
-            )
-        });
+        let has_eot = self
+            .events
+            .iter()
+            .any(|e| matches!(e.message(), MidiMessage::Meta(MetaEvent::EndOfTrack)));
 
         if !has_eot {
             self.add_end_of_track();
@@ -489,7 +480,9 @@ impl MidiTrack {
 
     /// Get events for a specific channel
     pub fn channel_events(&self, channel: u8) -> impl Iterator<Item = &MidiEvent> {
-        self.events.iter().filter(move |e| e.channel() == Some(channel))
+        self.events
+            .iter()
+            .filter(move |e| e.channel() == Some(channel))
     }
 
     /// Get meta events
@@ -499,12 +492,9 @@ impl MidiTrack {
 
     /// Get tempo events
     pub fn tempo_events(&self) -> impl Iterator<Item = &MidiEvent> {
-        self.events.iter().filter(|e| {
-            matches!(
-                e.message(),
-                MidiMessage::Meta(MetaEvent::Tempo(_))
-            )
-        })
+        self.events
+            .iter()
+            .filter(|e| matches!(e.message(), MidiMessage::Meta(MetaEvent::Tempo(_))))
     }
 
     /// Extract track to a specific channel (creates new track with only that channel)
@@ -589,7 +579,9 @@ mod tests {
             .events()
             .iter()
             .filter_map(|e| match e.message() {
-                MidiMessage::ControlChange { controller, value, .. } => Some((*controller, *value)),
+                MidiMessage::ControlChange {
+                    controller, value, ..
+                } => Some((*controller, *value)),
                 _ => None,
             })
             .collect();
@@ -608,10 +600,18 @@ mod tests {
         track.add_marker(20, "verse 1");
         track.add_track_name(0, "Piano");
 
-        assert!(matches!(track.events()[0].message(), MidiMessage::Meta(MetaEvent::Text(s)) if s == "hello"));
-        assert!(matches!(track.events()[1].message(), MidiMessage::Meta(MetaEvent::Lyric(s)) if s == "la"));
-        assert!(matches!(track.events()[2].message(), MidiMessage::Meta(MetaEvent::Marker(s)) if s == "verse 1"));
-        assert!(matches!(track.events()[3].message(), MidiMessage::Meta(MetaEvent::TrackName(s)) if s == "Piano"));
+        assert!(
+            matches!(track.events()[0].message(), MidiMessage::Meta(MetaEvent::Text(s)) if s == "hello")
+        );
+        assert!(
+            matches!(track.events()[1].message(), MidiMessage::Meta(MetaEvent::Lyric(s)) if s == "la")
+        );
+        assert!(
+            matches!(track.events()[2].message(), MidiMessage::Meta(MetaEvent::Marker(s)) if s == "verse 1")
+        );
+        assert!(
+            matches!(track.events()[3].message(), MidiMessage::Meta(MetaEvent::TrackName(s)) if s == "Piano")
+        );
     }
 
     #[test]
@@ -625,7 +625,11 @@ mod tests {
         assert!(track.events()[1].message().is_sustain_off());
         assert!(matches!(
             track.events()[2].message(),
-            MidiMessage::Meta(MetaEvent::TimeSignature { numerator: 6, clocks_per_click: 36, .. })
+            MidiMessage::Meta(MetaEvent::TimeSignature {
+                numerator: 6,
+                clocks_per_click: 36,
+                ..
+            })
         ));
     }
 

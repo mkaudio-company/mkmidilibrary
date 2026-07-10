@@ -9,24 +9,24 @@
 //! - [`NoteElement`] - Element for rendering notes
 //! - [`ClefElement`] - Element for rendering clefs
 
-mod staff;
-mod note;
 mod clef;
-mod measure;
 mod config;
 mod elements;
+mod measure;
+mod note;
+mod staff;
 
-pub use staff::StaffElement;
-pub use note::NoteElement;
 pub use clef::ClefElement;
-pub use measure::MeasureElement;
 pub use config::{RenderConfig, StaffConfig};
-pub use elements::{ScoreElement, render_score_to_image};
+pub use elements::{render_score_to_image, ScoreElement};
+pub use measure::MeasureElement;
+pub use note::NoteElement;
+pub use staff::StaffElement;
 
 use mkgraphic::support::canvas::Canvas;
 
-use crate::stream::Score;
 use crate::notation::Clef;
+use crate::stream::Score;
 
 /// Staff line spacing constant (in points)
 pub const STAFF_SPACE: f32 = 8.0;
@@ -48,7 +48,10 @@ pub struct StaffPosition {
 
 impl StaffPosition {
     pub fn new(position: i8, accidental: i8) -> Self {
-        Self { position, accidental }
+        Self {
+            position,
+            accidental,
+        }
     }
 
     /// Convert to Y coordinate relative to staff center
@@ -99,7 +102,11 @@ impl ScoreRenderer {
     /// Calculate the required canvas size for a score
     pub fn calculate_size(&self, score: &Score) -> (u32, u32) {
         let num_parts = score.parts().len();
-        let num_measures = score.parts().first().map(|p| p.measures().len()).unwrap_or(0);
+        let num_measures = score
+            .parts()
+            .first()
+            .map(|p| p.measures().len())
+            .unwrap_or(0);
 
         let width = self.config.margin_left
             + self.config.clef_width
@@ -173,7 +180,12 @@ pub fn midi_to_staff_position(midi: u8, clef: &Clef) -> StaffPosition {
     let total_steps = if midi_diff >= 0 {
         octaves * 7 + diatonic_step as i8
     } else {
-        octaves * 7 - if diatonic_step > 0 { 7 - diatonic_step as i8 } else { 0 }
+        octaves * 7
+            - if diatonic_step > 0 {
+                7 - diatonic_step as i8
+            } else {
+                0
+            }
     };
 
     // Position increases upward, so higher pitch = higher position

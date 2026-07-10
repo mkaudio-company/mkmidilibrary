@@ -245,7 +245,10 @@ impl NoteElement {
         for i in 0..dots {
             let dot_x = dot_x_start + (i as f32 * self.config.dot_spacing * 2.0);
             canvas.begin_path();
-            canvas.add_circle(Circle::new(Point::new(dot_x, dot_y), self.config.dot_radius));
+            canvas.add_circle(Circle::new(
+                Point::new(dot_x, dot_y),
+                self.config.dot_radius,
+            ));
             canvas.fill();
         }
     }

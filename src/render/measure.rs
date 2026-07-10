@@ -9,7 +9,7 @@ use num::{ToPrimitive, Zero};
 use super::config::RenderConfig;
 use super::note::NoteElement;
 use super::staff::{draw_bar_line, draw_double_bar_line, StaffElement};
-use super::{midi_to_staff_position, STAFF_SPACE, STAFF_HEIGHT};
+use super::{midi_to_staff_position, STAFF_HEIGHT, STAFF_SPACE};
 use crate::core::Fraction;
 use crate::notation::{Clef, KeySignature, TimeSignature};
 use crate::stream::{Measure, MusicElement};
@@ -76,12 +76,7 @@ impl MeasureElement {
     }
 
     /// Draw the measure from a Measure struct
-    pub fn draw_measure(
-        &self,
-        canvas: &mut Canvas,
-        measure: &Measure,
-        config: &RenderConfig,
-    ) {
+    pub fn draw_measure(&self, canvas: &mut Canvas, measure: &Measure, config: &RenderConfig) {
         let content_start = self.x;
         let content_width = self.width;
 
@@ -101,7 +96,8 @@ impl MeasureElement {
                     note_element.draw_to_canvas(canvas, config);
 
                     // Draw ledger lines if needed
-                    if config.show_ledger_lines && (position.position > 4 || position.position < -4) {
+                    if config.show_ledger_lines && (position.position > 4 || position.position < -4)
+                    {
                         let staff = StaffElement::new(self.width);
                         staff.draw_ledger_lines(
                             canvas,
@@ -143,7 +139,14 @@ impl MeasureElement {
                 &config.colors.bar_lines,
             );
         } else {
-            draw_bar_line(canvas, bar_x, top_y, bottom_y, 1.0, &config.colors.bar_lines);
+            draw_bar_line(
+                canvas,
+                bar_x,
+                top_y,
+                bottom_y,
+                1.0,
+                &config.colors.bar_lines,
+            );
         }
     }
 
@@ -185,12 +188,7 @@ impl MeasureElement {
         match duration.type_() {
             Some(DurationType::Whole) => {
                 // Whole rest: rectangle hanging from line 4
-                let rect = Rect::new(
-                    x,
-                    cy - s * 0.5 - s * 0.3,
-                    x + s * 1.5,
-                    cy - s * 0.5,
-                );
+                let rect = Rect::new(x, cy - s * 0.5 - s * 0.3, x + s * 1.5, cy - s * 0.5);
                 canvas.fill_rect(rect);
             }
             Some(DurationType::Half) => {
@@ -399,7 +397,13 @@ impl MeasureElement {
         }
     }
 
-    fn draw_sharp_symbol(&self, canvas: &mut Canvas, x: f32, y: f32, colors: &(f32, f32, f32, f32)) {
+    fn draw_sharp_symbol(
+        &self,
+        canvas: &mut Canvas,
+        x: f32,
+        y: f32,
+        colors: &(f32, f32, f32, f32),
+    ) {
         let color = Color::new(colors.0, colors.1, colors.2, colors.3);
         canvas.stroke_style(color);
         canvas.line_width(1.0);

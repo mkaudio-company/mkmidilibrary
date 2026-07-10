@@ -45,8 +45,12 @@ impl KeyFindingAlgorithm {
     fn profiles(&self) -> ([f64; 12], [f64; 12]) {
         match self {
             KeyFindingAlgorithm::KrumhanslSchmuckler => (
-                [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88],
-                [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17],
+                [
+                    6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88,
+                ],
+                [
+                    6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17,
+                ],
             ),
             KeyFindingAlgorithm::AardenEssen => (
                 [
@@ -63,12 +67,22 @@ impl KeyFindingAlgorithm {
                 [2.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 2.0, 1.0, 0.0, 0.5, 0.5],
             ),
             KeyFindingAlgorithm::BellmanBudge => (
-                [16.80, 0.86, 12.95, 1.41, 13.49, 11.93, 1.25, 20.28, 1.80, 8.04, 0.62, 10.57],
-                [18.16, 0.69, 12.99, 13.34, 1.07, 11.15, 1.38, 21.07, 7.49, 1.53, 0.92, 10.21],
+                [
+                    16.80, 0.86, 12.95, 1.41, 13.49, 11.93, 1.25, 20.28, 1.80, 8.04, 0.62, 10.57,
+                ],
+                [
+                    18.16, 0.69, 12.99, 13.34, 1.07, 11.15, 1.38, 21.07, 7.49, 1.53, 0.92, 10.21,
+                ],
             ),
             KeyFindingAlgorithm::TemperleyKostkaPayne => (
-                [0.748, 0.060, 0.488, 0.082, 0.670, 0.460, 0.096, 0.715, 0.104, 0.366, 0.057, 0.400],
-                [0.712, 0.084, 0.474, 0.618, 0.049, 0.460, 0.105, 0.747, 0.404, 0.067, 0.133, 0.330],
+                [
+                    0.748, 0.060, 0.488, 0.082, 0.670, 0.460, 0.096, 0.715, 0.104, 0.366, 0.057,
+                    0.400,
+                ],
+                [
+                    0.712, 0.084, 0.474, 0.618, 0.049, 0.460, 0.105, 0.747, 0.404, 0.067, 0.133,
+                    0.330,
+                ],
             ),
         }
     }
@@ -231,7 +245,10 @@ pub fn analyze_part_with_certainty(
 ) -> (KeyAnalysisResult, f64) {
     let notes = part.find_consecutive_notes();
     let distribution = pitch_class_distribution(&notes);
-    (find_key(&distribution, algorithm), tonal_certainty(&distribution, algorithm))
+    (
+        find_key(&distribution, algorithm),
+        tonal_certainty(&distribution, algorithm),
+    )
 }
 
 #[cfg(test)]
@@ -293,8 +310,16 @@ mod tests {
             KeyFindingAlgorithm::TemperleyKostkaPayne,
         ] {
             let result = analyze_part(&part, algorithm);
-            assert_eq!(result.key.tonic().step(), Step::C, "algorithm {algorithm:?} failed");
-            assert_eq!(result.key.mode(), KeyMode::Major, "algorithm {algorithm:?} failed");
+            assert_eq!(
+                result.key.tonic().step(),
+                Step::C,
+                "algorithm {algorithm:?} failed"
+            );
+            assert_eq!(
+                result.key.mode(),
+                KeyMode::Major,
+                "algorithm {algorithm:?} failed"
+            );
         }
     }
 
@@ -311,7 +336,9 @@ mod tests {
 
     #[test]
     fn test_rotate_aligns_tonic_to_absolute_pitch_class() {
-        let profile = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0];
+        let profile = [
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+        ];
         let rotated = rotate(&profile, 4); // tonic = E (pc 4)
         assert_eq!(rotated[4], 1.0); // the tonic itself gets profile[0]
         assert_eq!(rotated[11], 8.0); // pc 11 is 7 semitones above E (the fifth, B) -> profile[7]
@@ -320,7 +347,9 @@ mod tests {
     #[test]
     fn test_correlation_zero_variance_is_zero_not_nan() {
         let flat = [1.0; 12];
-        let other = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0];
+        let other = [
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+        ];
         assert_eq!(correlation(&flat, &other), 0.0);
     }
 
@@ -330,14 +359,18 @@ mod tests {
         let notes = part.find_consecutive_notes();
         let distribution = pitch_class_distribution(&notes);
         let certainty = tonal_certainty(&distribution, KeyFindingAlgorithm::KrumhanslSchmuckler);
-        assert!(certainty > 0.05, "expected clear tonal certainty, got {certainty}");
+        assert!(
+            certainty > 0.05,
+            "expected clear tonal certainty, got {certainty}"
+        );
     }
 
     #[test]
     fn test_tonal_certainty_zero_for_flat_distribution() {
         // Every pitch class equally present: no key should stand out.
         let flat_distribution = [1.0; 12];
-        let certainty = tonal_certainty(&flat_distribution, KeyFindingAlgorithm::KrumhanslSchmuckler);
+        let certainty =
+            tonal_certainty(&flat_distribution, KeyFindingAlgorithm::KrumhanslSchmuckler);
         assert_eq!(certainty, 0.0);
     }
 

@@ -121,9 +121,15 @@ mod tests {
         assert_eq!(ArticulationMark::Stress.name(), "stress");
         assert_eq!(ArticulationMark::Unstress.name(), "unstress");
         assert_eq!(ArticulationMark::StringHarmonic.name(), "string harmonic");
-        assert_eq!(ArticulationMark::HandbellIndication.name(), "handbell indication");
+        assert_eq!(
+            ArticulationMark::HandbellIndication.name(),
+            "handbell indication"
+        );
         assert_eq!(ArticulationMark::HarpFingerNails.name(), "harp fingernails");
-        assert_eq!(ArticulationMark::WoodwindIndication.name(), "woodwind indication");
+        assert_eq!(
+            ArticulationMark::WoodwindIndication.name(),
+            "woodwind indication"
+        );
         assert_eq!(ArticulationMark::BrassIndication.name(), "brass indication");
     }
 

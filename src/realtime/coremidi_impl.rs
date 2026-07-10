@@ -108,8 +108,9 @@ impl CallbackData {
 impl CoreMidiInput {
     /// Create a new CoreMIDI input
     pub fn new(client_name: &str) -> Result<Self, RtMidiError> {
-        let client = Client::new(client_name)
-            .map_err(|e| RtMidiError::DriverError(format!("Failed to create MIDI client: {}", e)))?;
+        let client = Client::new(client_name).map_err(|e| {
+            RtMidiError::DriverError(format!("Failed to create MIDI client: {}", e))
+        })?;
 
         let callback_data = Arc::new(Mutex::new(CallbackData::new()));
 
@@ -169,19 +170,20 @@ impl CoreMidiInput {
 
     /// Open a MIDI input port
     pub fn open_port(&mut self, port_index: usize, port_name: &str) -> Result<(), RtMidiError> {
-        let source = Sources.into_iter().nth(port_index).ok_or(RtMidiError::InvalidPort(port_index))?;
+        let source = Sources
+            .into_iter()
+            .nth(port_index)
+            .ok_or(RtMidiError::InvalidPort(port_index))?;
 
         let callback_data = Arc::clone(&self.callback_data);
         let input_port = self
             .client
             .input_port(port_name, Self::make_packet_handler(callback_data))
-            .map_err(|e| {
-                RtMidiError::DriverError(format!("Failed to create input port: {}", e))
-            })?;
+            .map_err(|e| RtMidiError::DriverError(format!("Failed to create input port: {}", e)))?;
 
-        input_port.connect_source(&source).map_err(|e| {
-            RtMidiError::DriverError(format!("Failed to connect to source: {}", e))
-        })?;
+        input_port
+            .connect_source(&source)
+            .map_err(|e| RtMidiError::DriverError(format!("Failed to connect to source: {}", e)))?;
 
         self.input_port = Some(input_port);
         self.connected_source = Some(source);
@@ -331,8 +333,9 @@ pub struct CoreMidiOutput {
 impl CoreMidiOutput {
     /// Create a new CoreMIDI output
     pub fn new(client_name: &str) -> Result<Self, RtMidiError> {
-        let client = Client::new(client_name)
-            .map_err(|e| RtMidiError::DriverError(format!("Failed to create MIDI client: {}", e)))?;
+        let client = Client::new(client_name).map_err(|e| {
+            RtMidiError::DriverError(format!("Failed to create MIDI client: {}", e))
+        })?;
 
         Ok(Self {
             client,
@@ -349,12 +352,9 @@ impl CoreMidiOutput {
             .nth(port_index)
             .ok_or(RtMidiError::InvalidPort(port_index))?;
 
-        let output_port = self
-            .client
-            .output_port(port_name)
-            .map_err(|e| {
-                RtMidiError::DriverError(format!("Failed to create output port: {}", e))
-            })?;
+        let output_port = self.client.output_port(port_name).map_err(|e| {
+            RtMidiError::DriverError(format!("Failed to create output port: {}", e))
+        })?;
 
         self.output_port = Some(output_port);
         self.destination = Some(destination);
@@ -409,9 +409,8 @@ impl CoreMidiOutput {
         let packet_buffer = PacketBuffer::new(0, message);
 
         if let (Some(port), Some(dest)) = (&self.output_port, &self.destination) {
-            port.send(dest, &packet_buffer).map_err(|e| {
-                RtMidiError::DriverError(format!("Failed to send message: {}", e))
-            })?;
+            port.send(dest, &packet_buffer)
+                .map_err(|e| RtMidiError::DriverError(format!("Failed to send message: {}", e)))?;
         } else if let Some(ref source) = self.virtual_source {
             source.received(&packet_buffer).map_err(|e| {
                 RtMidiError::DriverError(format!("Failed to send from virtual source: {}", e))
@@ -433,6 +432,10 @@ mod tests {
         // This test just verifies the functions don't panic
         let inputs = get_input_ports();
         let outputs = get_output_ports();
-        println!("Found {} input ports and {} output ports", inputs.len(), outputs.len());
+        println!(
+            "Found {} input ports and {} output ports",
+            inputs.len(),
+            outputs.len()
+        );
     }
 }

@@ -297,7 +297,9 @@ impl RomanNumeral {
         let local_tonic = match self.secondary {
             Some(target_degree) => {
                 let scale = Scale::new(key.tonic().clone(), key.mode());
-                scale.pitch_for_degree(target_degree).unwrap_or_else(|| key.tonic().clone())
+                scale
+                    .pitch_for_degree(target_degree)
+                    .unwrap_or_else(|| key.tonic().clone())
             }
             None => key.tonic().clone(),
         };
@@ -319,10 +321,26 @@ impl RomanNumeral {
         }
 
         let intervals: Vec<Interval> = match self.quality {
-            ChordQuality::Major => vec![Interval::unison(), Interval::major_third(), Interval::perfect_fifth()],
-            ChordQuality::Minor => vec![Interval::unison(), Interval::minor_third(), Interval::perfect_fifth()],
-            ChordQuality::Diminished => vec![Interval::unison(), Interval::minor_third(), Interval::tritone()],
-            ChordQuality::Augmented => vec![Interval::unison(), Interval::major_third(), Interval::new(4, 8)],
+            ChordQuality::Major => vec![
+                Interval::unison(),
+                Interval::major_third(),
+                Interval::perfect_fifth(),
+            ],
+            ChordQuality::Minor => vec![
+                Interval::unison(),
+                Interval::minor_third(),
+                Interval::perfect_fifth(),
+            ],
+            ChordQuality::Diminished => vec![
+                Interval::unison(),
+                Interval::minor_third(),
+                Interval::tritone(),
+            ],
+            ChordQuality::Augmented => vec![
+                Interval::unison(),
+                Interval::major_third(),
+                Interval::new(4, 8),
+            ],
             ChordQuality::Dominant7 => vec![
                 Interval::unison(),
                 Interval::major_third(),
@@ -359,8 +377,16 @@ impl RomanNumeral {
                 Interval::new(4, 8),
                 Interval::minor_seventh(),
             ],
-            ChordQuality::Sus2 => vec![Interval::unison(), Interval::major_second(), Interval::perfect_fifth()],
-            ChordQuality::Sus4 => vec![Interval::unison(), Interval::perfect_fourth(), Interval::perfect_fifth()],
+            ChordQuality::Sus2 => vec![
+                Interval::unison(),
+                Interval::major_second(),
+                Interval::perfect_fifth(),
+            ],
+            ChordQuality::Sus4 => vec![
+                Interval::unison(),
+                Interval::perfect_fourth(),
+                Interval::perfect_fifth(),
+            ],
             ChordQuality::Power => vec![Interval::unison(), Interval::perfect_fifth()],
             ChordQuality::Other => vec![Interval::unison()],
         };
@@ -403,8 +429,15 @@ enum ExplicitQuality {
 /// matching before "III"/"IV") as a prefix of `s`, in both upper and
 /// lower case. Returns `(degree, is_lower, remainder)`.
 fn parse_numeral_prefix(s: &str) -> Option<(u8, bool, &str)> {
-    const TOKENS: [(&str, u8); 7] =
-        [("VII", 7), ("III", 3), ("II", 2), ("IV", 4), ("VI", 6), ("I", 1), ("V", 5)];
+    const TOKENS: [(&str, u8); 7] = [
+        ("VII", 7),
+        ("III", 3),
+        ("II", 2),
+        ("IV", 4),
+        ("VI", 6),
+        ("I", 1),
+        ("V", 5),
+    ];
     for (token, degree) in TOKENS {
         if let Some(remainder) = s.strip_prefix(token) {
             return Some((degree, false, remainder));
@@ -474,9 +507,10 @@ impl fmt::Display for RomanNumeral {
         }
 
         let numeral = match self.quality {
-            ChordQuality::Minor | ChordQuality::Diminished | ChordQuality::HalfDiminished7 | ChordQuality::Diminished7 => {
-                self.numeral().to_lowercase()
-            }
+            ChordQuality::Minor
+            | ChordQuality::Diminished
+            | ChordQuality::HalfDiminished7
+            | ChordQuality::Diminished7 => self.numeral().to_lowercase(),
             _ => self.numeral().to_string(),
         };
 
@@ -512,7 +546,11 @@ impl fmt::Display for RomanNumeral {
                 accidental_prefix, numeral, quality_symbol, figured_bass, target_numeral
             )
         } else {
-            write!(f, "{}{}{}{}", accidental_prefix, numeral, quality_symbol, figured_bass)
+            write!(
+                f,
+                "{}{}{}{}",
+                accidental_prefix, numeral, quality_symbol, figured_bass
+            )
         }
     }
 }
@@ -545,9 +583,7 @@ impl ChordAnalyzer {
         let mut best_span = 12u8;
 
         for rotation in 0..n {
-            let mut rotated: Vec<u8> = (0..n)
-                .map(|i| pcs[(rotation + i) % n])
-                .collect();
+            let mut rotated: Vec<u8> = (0..n).map(|i| pcs[(rotation + i) % n]).collect();
 
             // Normalize to start from 0
             let first = rotated[0];
@@ -618,7 +654,11 @@ impl ChordAnalyzer {
         for i in 0..n {
             for j in (i + 1)..n {
                 let interval = (deduped[j] as i8 - deduped[i] as i8).unsigned_abs() % 12;
-                let ic = if interval > 6 { 12 - interval } else { interval };
+                let ic = if interval > 6 {
+                    12 - interval
+                } else {
+                    interval
+                };
                 if ic > 0 {
                     vector[(ic - 1) as usize] += 1;
                 }
@@ -662,10 +702,16 @@ mod tests {
     #[test]
     fn test_chord_quality() {
         let c_major = Chord::major_triad(Pitch::from_parts(Step::C, Some(4), None));
-        assert_eq!(ChordAnalyzer::analyze_quality(&c_major), ChordQuality::Major);
+        assert_eq!(
+            ChordAnalyzer::analyze_quality(&c_major),
+            ChordQuality::Major
+        );
 
         let a_minor = Chord::minor_triad(Pitch::from_parts(Step::A, Some(4), None));
-        assert_eq!(ChordAnalyzer::analyze_quality(&a_minor), ChordQuality::Minor);
+        assert_eq!(
+            ChordAnalyzer::analyze_quality(&a_minor),
+            ChordQuality::Minor
+        );
     }
 
     #[test]

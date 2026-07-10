@@ -125,7 +125,9 @@ impl Ornament {
             OrnamentKind::Mordent => vec![main_pitch.clone(), lower, main_pitch.clone()],
             OrnamentKind::InvertedMordent => vec![main_pitch.clone(), upper, main_pitch.clone()],
             OrnamentKind::Turn => vec![upper, main_pitch.clone(), lower, main_pitch.clone()],
-            OrnamentKind::InvertedTurn => vec![lower, main_pitch.clone(), upper, main_pitch.clone()],
+            OrnamentKind::InvertedTurn => {
+                vec![lower, main_pitch.clone(), upper, main_pitch.clone()]
+            }
         }
     }
 
@@ -185,7 +187,11 @@ fn diatonic_neighbor(main_pitch: &Pitch, key: &Key, upper: bool) -> Pitch {
     };
 
     let neighbor_degree = if upper {
-        if degree == 7 { 1 } else { degree + 1 }
+        if degree == 7 {
+            1
+        } else {
+            degree + 1
+        }
     } else if degree == 1 {
         7
     } else {
