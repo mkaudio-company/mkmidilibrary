@@ -1,7 +1,7 @@
 [package]
 name = "mkmidilibrary"
-version = "0.2.0"
-edition = "2021"
+version = "0.2.1"
+edition = "2024"
 description = "Music scoring and MIDI library for Rust"
 license = "MIT"
 documentation = "https://docs.rs/mkmidilibrary"
